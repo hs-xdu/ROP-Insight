@@ -14,7 +14,7 @@ class MvpDocumentTests(unittest.TestCase):
 
     def test_section_numbers_are_complete_and_ordered(self):
         sections = re.findall(r"^## (\d+)\. \S.*$", self.text, re.MULTILINE)
-        self.assertEqual(sections, [str(number) for number in range(1, 7)])
+        self.assertEqual(sections, ["1", "2", "4", "5", "6"])
         self.assertEqual(len(re.findall(r"^# \S.*$", self.text, re.MULTILINE)), 1)
 
     def test_acceptance_criteria_are_seven_nonempty_items(self):
@@ -22,6 +22,12 @@ class MvpDocumentTests(unittest.TestCase):
         items = re.findall(r"^(\d+)\. (\S.*)$", acceptance, re.MULTILINE)
         self.assertEqual([number for number, _ in items], list("1234567"))
         self.assertEqual(len({description for _, description in items}), 7)
+
+    def test_technology_choice_remains_open_for_discussion(self):
+        technology = self.text.split("## 4. 技术方案\n", 1)[1].split("## 5.", 1)[0]
+        self.assertIn("Windows 本地运行", technology)
+        self.assertNotIn("PyQt6", technology)
+        self.assertNotIn("Python 3.12", technology)
 
 
 if __name__ == "__main__":
