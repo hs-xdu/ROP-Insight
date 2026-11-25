@@ -1,6 +1,7 @@
 from copy import deepcopy
 import hashlib
 import json
+import re
 from pathlib import Path
 from threading import Event
 
@@ -138,7 +139,7 @@ def test_long_chinese_unavailable_reasons_paginate_without_dropping_text(report_
     pages,text=report_exporter.pdf_text(folder/'report.pdf')
     compact=''.join(text.split())
     assert pages>=3
-    assert compact.count('长文本核对')==len(quant['metrics'])*12
+    assert compact.count('长文本核对')==render_text(report).count('长文本核对')
     assert 'SVM结果不可用' in compact and '版本与来源追溯' in compact
     from PyQt6.QtPdf import QPdfDocument
     pdf=QPdfDocument(None)
@@ -223,3 +224,80 @@ def test_report_export_thread_failure_retry_and_close(report_source,image_file,t
     release.set()
     qtbot.waitUntil(lambda:not window.report_exporter.busy and not window.isVisible(),timeout=10000)
     assert len(list(tmp_path.glob('rop-report-*/report.pdf')))==1
+
+
+def test_shared_feature_descriptions_are_limited_to_three_and_do_not_grade(report_source):
+    before=deepcopy(report_source)
+    report=report_from_result(report_source)
+    description=report.data['feature_descriptions']
+    assert report.data['template_version']=='p5-factual-2'
+    assert [item['key'] for item in description['items']]==[
+        'vessel_area_density_fov','fractal_dimension','sliding_window_max_density_gradient']
+    assert description['grading_applied'] is False
+    assert all(item['grade'] is None and item['reference_interval'] is None for item in description['items'])
+    assert report_source==before
+    for item in description['items']:
+        assert item['value']==before['modules']['quantification']['values']['metrics'][item['key']]['value']
+        assert item['explanation'] and item['review_hint'] and item['grid']==512
+    for detailed in (True,False):
+        assert '血管量化文字摘要' in render_text(report,detailed)
+        assert '整体血管覆盖方面' in render_html(report,detailed)
+        assert '血管网络形态复杂程度方面' in render_text(report,detailed)
+    assert '重合指标分项说明' in render_text(report)
+    assert '重合指标分项说明' not in render_text(report,False)
+
+
+@pytest.mark.parametrize('value',[None,float('nan'),float('inf'),float('-inf'),True])
+def test_shared_description_missing_values_do_not_produce_morphology(report_source,value):
+    metrics=report_source['modules']['quantification']['values']['metrics']
+    for key in ('vessel_area_density_fov','fractal_dimension','sliding_window_max_density_gradient'):
+        metrics[key]['value']=value
+    report=report_from_result(report_source)
+    for item in report.data['feature_descriptions']['items']:
+        assert item['status']=='unavailable' and item['value'] is None
+    summary=render_text(report,False)
+    assert summary.count('本次不作对应形态描述')==3
+    assert '为0（' not in summary
+
+
+def test_shared_description_zero_is_valid_and_reasons_are_escaped(report_source):
+    metrics=report_source['modules']['quantification']['values']['metrics']
+    metrics['vessel_area_density_fov']['value']=0.
+    metrics['fractal_dimension'].update(value=None,status='unavailable',reason='<script>缺失原因</script>')
+    report=report_from_result(report_source)
+    assert report.data['feature_descriptions']['items'][0]['status']=='available'
+    assert '血管密度 VD为0（512网格）' in render_text(report,False)
+    for detailed in (True,False):
+        html=render_html(report,detailed)
+        assert '<script>' not in html
+        if detailed:assert '&lt;script&gt;缺失原因&lt;/script&gt;' in html
+        else:assert '具体不可用原因见详细报告' in html
+
+
+def test_shared_descriptions_survive_pdf_and_source_precision_is_preserved(report_source,tmp_path,qtbot):
+    report=report_from_result(report_source)
+    folder=report_exporter.export_report_bundle(report,tmp_path)
+    _,text=report_exporter.pdf_text(folder/'report.pdf')
+    compact=''.join(text.split())
+    for term in ('血管量化文字摘要','重合指标分项说明','整体血管覆盖方面','形态复杂性','分割连续性','指标文字规则版本'):
+        assert term in compact
+    saved=json.loads((folder/'report.json').read_text(encoding='utf-8'))
+    assert saved['feature_descriptions']==report.data['feature_descriptions']
+    assert saved['features']==report.data['features']
+    assert saved['feature_descriptions']['items'][0]['value']==1.2345678901234567
+
+
+def test_oversized_reason_row_preserves_every_line_across_pages(report_source,tmp_path,qtbot):
+    metric=report_source['modules']['quantification']['values']['metrics']['sliding_window_max_density_gradient']
+    metric.update(value=None,status='unavailable',reason='超长原因校验。'*800)
+    report=report_from_result(report_source)
+    folder=report_exporter.export_report_bundle(report,tmp_path)
+    pages,text=report_exporter.pdf_text(folder/'report.pdf')
+    # A marker may wrap between pages, with the known footer/header inserted
+    # between its characters in extracted text. Compare the body without them.
+    text=re.sub(r'ROP-Insight\s*\|\s*研究辅助分析报告','',text)
+    text=re.sub(r'研究用途\s*-\s*非临床诊断\s*第\s*\d+\s*/\s*\d+\s*页','',text)
+    compact=''.join(text.split()).replace('指标数值/状态单位网格','')
+    assert pages>3
+    assert compact.count('超长原因校验')==render_text(report).count('超长原因校验')
+    assert '版本与来源追溯' in compact and report.data['source']['image']['file_sha256'] in compact

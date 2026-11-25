@@ -26,6 +26,17 @@ def report_sections(report, detailed=True):
         f"{item['name'].capitalize()}：{item['source']}；{item['width']} × {item['height']} px；解码原图坐标"
         if item['status']=='available' else f"{item['name'].capitalize()}：不可用；{item['reason']}"
         for item in data['structures']]))
+    descriptions=data.get('feature_descriptions')
+    if descriptions:
+        observations=[]
+        for item in descriptions['items']:
+            grid=f"{item['grid']}网格" if item['grid'] else '网格未提供'
+            observations.append(f"{item['summary_context']}，{item['title']}为{number(item['value'])}（{grid}）"
+                if item['status']=='available' else f"{item['summary_context']}，{item['title']}不可用，本次不作对应形态描述")
+        summary='本次分析中，'+'；'.join(observations)+'。'
+        if any(item['status']!='available' for item in descriptions['items']):summary+='具体不可用原因见详细报告。'
+        sections.append(('血管量化文字摘要',[summary,
+            '本段记录指标数值和可用性，不按旧平台经验区间进行偏低、中等或偏高分档。']))
     if detailed:
         sections.append(('量化特征（固定11项）',[
             f"{item['title']}：{number(item['value'])}；单位：{item['unit']}；网格：{item['grid'] or '未提供'}"
@@ -34,6 +45,13 @@ def report_sections(report, detailed=True):
     else:
         available=sum(item['status']=='available' for item in data['features'])
         sections.append(('量化概况',[f'固定11项特征中有{available}项可用；逐项数值、单位和网格见详细报告。']))
+    if detailed and descriptions:
+        lines=[]
+        for item in descriptions['items']:
+            observation=(f"本次数值：{number(item['value'])}；单位：{item['unit']}；网格：{item['grid'] or '未提供'}。"
+                if item['status']=='available' else '本次不可用；原因：'+item['reason']+'。')
+            lines.append(item['title']+'：'+item['explanation']+'\n'+observation+'\n核对提示：'+item['review_hint'])
+        sections.append(('重合指标分项说明',lines))
     lines=([f"连续严重程度评分：{number(score['median'])}",
             f"95%后验区间：[{number(score['lower'])}, {number(score['upper'])}]",
             '区间宽度：'+number(score['ci95_width'])]
@@ -56,6 +74,7 @@ def report_sections(report, detailed=True):
             '输入文件SHA-256：'+str(image.get('file_sha256') or '未记录'),
             'RGB像素SHA-256：'+str(image.get('rgb_pixel_sha256') or '未记录'),
             '报告来源快照SHA-256：'+data['source_snapshot_sha256']]
+        if descriptions:lines.insert(1,'指标文字规则版本：'+descriptions['rule_version'])
         for name,item in source['modules'].items():
             lines.extend([f"{MODULE_NAMES.get(name,name)}：{STATES.get(item.get('state'),item.get('state'))}；设备：{item.get('device') or '未记录'}",
                 '模型版本：'+str(item.get('model_version') or '未记录'),

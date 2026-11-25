@@ -10,10 +10,11 @@ import tempfile
 from uuid import uuid4
 
 from PyQt6.QtCore import QMarginsF, QRectF, QSizeF, Qt
-from PyQt6.QtGui import QColor, QFont, QPainter, QPageLayout, QPageSize, QPdfWriter, QTextDocument, QGuiApplication, QTextCursor, QTextFormat
+from PyQt6.QtGui import QColor, QFont, QPainter, QPageLayout, QPageSize, QPdfWriter, QGuiApplication, QImage
 from PyQt6.QtPdf import QPdfDocument
 
 from rop_insight.services.report_template import render_html, render_text, STYLESHEET
+from rop_insight.services.pdf_report_layout import ReportPageLayout
 
 
 def pdf_text(path):
@@ -36,37 +37,15 @@ def write_pdf(report,path):
     writer.setTitle('ROP-Insight 结构化辅助分析报告')
     writer.setCreator('ROP-Insight '+report.data['template_version'])
     writer.setPdfVersion(QPdfWriter.PdfVersion.PdfVersion_1_6)
-    document=QTextDocument()
-    document.setDefaultFont(QFont('Microsoft YaHei',9))
-    document.setDefaultStyleSheet(STYLESHEET)
-    document.setDocumentMargin(0)
-    document.documentLayout().setPaintDevice(writer)
-    document.setHtml(render_html(report))
-    block=document.begin()
-    while block.isValid():
-        cursor=QTextCursor(block)
-        if cursor.currentTable() is None and len(block.text())<500:
-            fmt=block.blockFormat();fmt.setNonBreakableLines(True);cursor.setBlockFormat(fmt)
-        block=block.next()
+    measure_device=QImage(1,1,QImage.Format.Format_ARGB32)
+    measure_device.setDotsPerMeterX(round(96/.0254));measure_device.setDotsPerMeterY(round(96/.0254))
+    scale=writer.logicalDpiX()/measure_device.logicalDpiX()
     width,height=writer.width(),writer.height()
     header,footer=38,35
     body_height=height-header-footer
-    document.setPageSize(QSizeF(width,body_height))
-    # Qt may split a short rich-text paragraph containing <br> despite its block
-    # hint. Move these small factual sections together when they cross a page.
-    block=document.begin()
-    while block.isValid():
-        if block.text() in ('连续评分与后验区间','SVM结构辅助分类'):
-            layout=document.documentLayout()
-            top=layout.blockBoundingRect(block).top()
-            last=block.next()
-            bottom=layout.blockBoundingRect(last).bottom() if last.isValid() else top
-            if int(top//body_height)!=int((bottom-1)//body_height):
-                cursor=QTextCursor(block);fmt=block.blockFormat()
-                fmt.setPageBreakPolicy(QTextFormat.PageBreakFlag.PageBreak_AlwaysBefore)
-                cursor.setBlockFormat(fmt)
-        block=block.next()
-    pages=document.pageCount()
+    logical_width,logical_body_height=width/scale,math.floor(body_height/scale)
+    layout=ReportPageLayout(report,logical_width,logical_body_height,measure_device)
+    pages=len(layout.pages)
     painter=QPainter()
     if not painter.begin(writer):raise OSError('无法创建PDF')
     try:
@@ -76,14 +55,14 @@ def write_pdf(report,path):
             painter.drawText(QRectF(0,0,width,header-8),Qt.AlignmentFlag.AlignLeft,'ROP-Insight | 研究辅助分析报告')
             painter.save()
             painter.setClipRect(QRectF(0,header,width,body_height))
-            painter.translate(0,header-page*body_height)
-            document.drawContents(painter,QRectF(0,page*body_height,width,body_height))
+            painter.translate(0,header)
+            painter.scale(scale,scale)
+            layout.paint_page(painter,page)
             painter.restore()
             painter.drawText(QRectF(0,height-footer+10,width,footer-10),
                 Qt.AlignmentFlag.AlignRight,f'研究用途 - 非临床诊断     第 {page+1} / {pages} 页')
     finally:
         painter.end()
-        document.documentLayout().setPaintDevice(None)
         del writer
     count,text=pdf_text(path)
     if count!=pages or 'ROP-Insight' not in text:raise OSError('PDF内容校验失败')

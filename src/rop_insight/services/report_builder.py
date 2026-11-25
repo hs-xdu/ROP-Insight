@@ -13,8 +13,9 @@ from rop_insight.models.report import ReportDocument
 from rop_insight.services.result_exporter import ExportSnapshot, portable, pixel_hash, VALUE_FIELDS, CLASSES
 from rop_insight.inference.svm_backend import FEATURES
 from rop_insight.services.build_info import code_identity
+from rop_insight.services.feature_descriptions import describe_features
 
-TEMPLATE_VERSION = 'p5-factual-1'
+TEMPLATE_VERSION = 'p5-factual-2'
 METRIC_NAMES = {'fractal_dimension':'分形维数 FD','vessel_area_density_fov':'血管密度 VD',
     'sliding_window_max_density_gradient':'最大局部密度变化','T3':'血管迂曲度 T3','B3':'血管分支 B3',
     'ridge_area_ratio_fov':'Ridge面积比例','ridge_solidity':'Ridge实心度',
@@ -163,5 +164,6 @@ def report_from_result(result, *, report_id=None, generated_at=None):
         generator=dict(software_version=software_version,code_revision=revision,code_dirty=dirty,
                        pyqt=PYQT_VERSION_STR,qt=QT_VERSION_STR),
         generated_at=generated_at or timestamp(),source_snapshot_sha256=hashlib.sha256(canonical.encode('utf-8')).hexdigest(),
-        source=source,a6=a6,structures=structures,features=features,score=scoring,svm=svm_result,limitations=limitations)
+        source=source,a6=a6,structures=structures,features=features,score=scoring,svm=svm_result,limitations=limitations,
+        feature_descriptions=describe_features(features))
     return ReportDocument(json.dumps(data,ensure_ascii=False,allow_nan=False,sort_keys=True))
