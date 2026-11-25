@@ -8,13 +8,14 @@ from rop_insight.services.result_exporter import export_bundle
 class ExportWorker(QObject):
     done = pyqtSignal(object, str)
 
-    def __init__(self,snapshot,parent_dir):
+    def __init__(self,snapshot,parent_dir,job=None):
         super().__init__()
         self.snapshot,self.parent_dir=snapshot,parent_dir
+        self.job=job
 
     def run(self):
         try:
-            result=export_bundle(self.snapshot,self.parent_dir)
+            result=(self.job or export_bundle)(self.snapshot,self.parent_dir)
             self.done.emit(result,'')
         except Exception:
             logging.getLogger('rop_insight.analysis').exception('Result export failed')
@@ -25,10 +26,11 @@ class ExportController(QObject):
     changed=pyqtSignal()
     finished=pyqtSignal(object,str)
 
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,job=None):
         super().__init__(parent)
         self._thread=self._worker=None
         self._outcome=(None,'')
+        self.job=job
 
     @property
     def busy(self):
@@ -38,7 +40,7 @@ class ExportController(QObject):
         if self.busy:
             return False
         thread=QThread(self)
-        worker=ExportWorker(snapshot,parent_dir)
+        worker=ExportWorker(snapshot,parent_dir,self.job)
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.done.connect(self._receive)

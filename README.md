@@ -1,6 +1,6 @@
 # ROP-Insight
 
-后续增量已规划、尚未实现：P5 结构化辅助分析报告（优先）、P6 简化病例信息（建议）、P7 历史记录与复核（可选）。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
+P5 已实现：分析结束后点击“预览辅助分析报告”，查看简要/详细报告并“导出PDF报告”。输出PDF、精确JSON、文字及来源清单，使用与验证见 [P5说明](docs/P5.md)。P6简化病例信息（建议）、P7历史记录与复核（可选）仍为规划。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
 
 完整研究平台入口：`.\run-platform.ps1`。导入原图和已有 Ridge Mask，开始分析，结束后可“导出分析结果”，生成独立目录中的 JSON、二值 Mask PNG 和原图坐标叠加图。
 

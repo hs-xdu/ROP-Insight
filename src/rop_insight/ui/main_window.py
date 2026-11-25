@@ -18,6 +18,9 @@ from rop_insight.ui.result_panel import ResultPanel
 from rop_insight.inference.imported_ridge import load_ridge
 from rop_insight.services.result_exporter import ExportSnapshot, ExportError
 from rop_insight.services.export_controller import ExportController
+from rop_insight.services.report_builder import build_report
+from rop_insight.services.report_exporter import export_report_bundle
+from rop_insight.ui.report_dialog import ReportDialog
 
 
 class LoadState(Enum):
@@ -35,6 +38,8 @@ class MainWindow(QMainWindow):
         self.state = LoadState.EMPTY
         self.analysis = controller if controller is not None else AnalysisController(parent=self)
         self.exporter = ExportController(self)
+        self.report_exporter = ExportController(self,job=export_report_bundle)
+        self.report_dialog = None
         self._closing = False
         self._display_run_id = None
         self._displayed_masks = {}
@@ -81,6 +86,8 @@ class MainWindow(QMainWindow):
         self.cancel_analysis_button = QPushButton("取消分析")
         self.export_button = QPushButton("导出分析结果")
         self.export_button.clicked.connect(self.choose_export)
+        self.report_button = QPushButton("预览辅助分析报告")
+        self.report_button.clicked.connect(self.preview_report)
         self.analysis_label = QLabel("分析模块未配置")
         self.analysis_label.setWordWrap(True)
         self.analysis_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -88,12 +95,15 @@ class MainWindow(QMainWindow):
         side.addWidget(self.analyze_button)
         side.addWidget(self.cancel_analysis_button)
         side.addWidget(self.export_button)
+        side.addWidget(self.report_button)
         side.addWidget(self.analysis_label)
         self.analyze_button.clicked.connect(self.start_analysis)
         self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
         self.analysis.changed.connect(self._update_analysis)
         self.exporter.changed.connect(self._update_analysis)
         self.exporter.finished.connect(self._export_finished)
+        self.report_exporter.changed.connect(self._update_analysis)
+        self.report_exporter.finished.connect(self._report_export_finished)
         self.analysis.idle.connect(self._analysis_idle)
         self.result_panel = ResultPanel()
         side.addWidget(self.result_panel)
@@ -246,6 +256,29 @@ class MainWindow(QMainWindow):
         if parent:
             self.export_results(parent)
 
+    def preview_report(self):
+        if self.analysis.busy or self.report_exporter.busy or self._closing:
+            return None
+        try:
+            report=build_report(ExportSnapshot.capture(self.analysis.context,self.analysis.current_run))
+        except (ExportError,ValueError) as exc:
+            self.error_label.setText(f"报告生成失败：{exc}");self.error_label.show()
+            return None
+        self.error_label.hide()
+        if self.report_dialog is None:
+            self.report_dialog=ReportDialog(report,self.report_exporter,self.export_report,self)
+        else:self.report_dialog.set_report(report)
+        self.report_dialog.show();self.report_dialog.raise_()
+        return self.report_dialog
+
+    def export_report(self,report,parent):
+        if self.report_exporter.busy or self._closing:return False
+        return self.report_exporter.start(report,parent)
+
+    def _report_export_finished(self,path,error):
+        self.statusBar().showMessage(error if error else f"PDF报告已导出 · {path}")
+        if self._closing and not self.analysis.busy and not self.exporter.busy:self.close()
+
     def export_results(self, parent):
         if self.exporter.busy or self.analysis.busy or self._closing:
             return False
@@ -266,7 +299,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(error)
         else:
             self.statusBar().showMessage(f"已导出分析快照 · {path}")
-        if self._closing and not self.analysis.busy:
+        if self._closing and not self.analysis.busy and not self.report_exporter.busy:
             self.close()
 
     def choose_ridge(self):
@@ -291,10 +324,13 @@ class MainWindow(QMainWindow):
 
     def _update_analysis(self):
         run = self.analysis.current_run
+        self.report_button.setEnabled(bool(run and run.finished_at and run.status!='running')
+            and not self.analysis.busy and not self.report_exporter.busy and not self._closing)
         self.export_button.setEnabled(bool(run and run.finished_at and run.status != 'running')
             and not self.analysis.busy and not self.exporter.busy and not self._closing)
         run_id = self.analysis.current_run.run_id if self.analysis.current_run else None
         if run_id != self._display_run_id or run_id is None:
+            if self.report_dialog is not None:self.report_dialog.close()
             self._display_run_id = run_id
             self._displayed_masks.clear()
             self.view.clear_results()
@@ -359,7 +395,7 @@ class MainWindow(QMainWindow):
         self.view.update_layers()
 
     def closeEvent(self, event):
-        if self.analysis.busy or self.exporter.busy:
+        if self.analysis.busy or self.exporter.busy or self.report_exporter.busy:
             self._closing = True
             self.import_button.setEnabled(False)
             self.clear_button.setEnabled(False)
@@ -372,5 +408,5 @@ class MainWindow(QMainWindow):
             event.accept()
 
     def _analysis_idle(self):
-        if self._closing and not self.exporter.busy:
+        if self._closing and not self.exporter.busy and not self.report_exporter.busy:
             self.close()

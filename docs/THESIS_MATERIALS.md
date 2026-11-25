@@ -6,8 +6,8 @@
 | --- | --- | --- |
 | 6.2 AI协同开发 | AGENTS.md、Git历史、[路线图](IMPLEMENTATION_ROADMAP.md)、[P4 Spec](P4_SPEC.md)、各阶段审查记录 | 本轮授权连续实施P4-A/B，历史提交用于追溯 |
 | 6.3 总体设计 | [技术方案](TECHNICAL_PLAN.md)、下方模块图、[运行手册](RUNBOOK.md) | 手动Ridge及隔离算法环境如实标注 |
-| 6.4 功能实现 | [A6](P2_E_A6.md)、[量化](P3_A.md)、[评分/SVM](P3_B.md)、[导出](P4_A.md)、合成截图 | 合成图不作为真实诊断案例 |
-| 6.5 测试与验证 | tests/、[系统验收](P4_B_VALIDATION.md)、[环境记录](ENVIRONMENT_LOCK.md)、本地参考证据 | 518条训练特征重放是工程复现，不是独立泛化性能 |
+| 6.4 功能实现 | [A6](P2_E_A6.md)、[量化](P3_A.md)、[评分/SVM](P3_B.md)、[导出](P4_A.md)、[结构化报告](P5.md)、合成截图 | 合成图不作为真实诊断案例 |
+| 6.5 测试与验证 | tests/、[系统验收](P4_B_VALIDATION.md)、[P5报告验证](P5.md)、[环境记录](ENVIRONMENT_LOCK.md)、本地参考证据 | 518条训练特征重放是工程复现，不是独立泛化性能 |
 
 ```mermaid
 flowchart LR

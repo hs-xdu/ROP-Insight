@@ -74,7 +74,12 @@ def verify(args):
         app.processEvents()
         run=controller.current_run
         expected_status='partial_success' if args.expect_partial else 'success'
-        if run.status!=expected_status:raise ValueError('Unexpected pipeline status; inspect local analysis logs')
+        if run.status!=expected_status:
+            failure=dict(status=run.status,expected_status=expected_status,
+                states={name:str(item.state) for name,item in run.modules.items()},
+                errors={name:item.error.code for name,item in run.modules.items() if item.error})
+            (args.output/'failure.json').write_text(json.dumps(failure,indent=2),encoding='utf-8')
+            raise ValueError('Unexpected pipeline status: '+json.dumps(failure))
         elapsed=time.monotonic()-started
         differences={}
         if args.reference:
@@ -106,11 +111,40 @@ def verify(args):
         again=export_bundle(snapshot,args.output)
         if (bundle/'analysis_overlay.png').read_bytes()!=(again/'analysis_overlay.png').read_bytes():
             raise ValueError('View transform affected export')
+        report_validation=None
+        if args.report:
+            from rop_insight.services.report_builder import report_from_result
+            from rop_insight.services.report_exporter import pdf_text
+            from rop_insight.services.report_template import number
+            dialog=window.preview_report()
+            if dialog is None:raise ValueError('Report preview unavailable')
+            report_data=dialog.report.data
+            persisted=report_from_result(json.loads((bundle/'result.json').read_text(encoding='utf-8')))
+            if report_data['source_snapshot_sha256']!=persisted.data['source_snapshot_sha256']:
+                raise ValueError('Report source differs from P4 result')
+            outcomes=[]
+            window.report_exporter.finished.connect(lambda path,error:outcomes.append((path,error)))
+            if not dialog.export_to(args.output):raise ValueError('Report export cannot start')
+            while window.report_exporter.busy:app.processEvents();time.sleep(.01)
+            app.processEvents()
+            if not outcomes or outcomes[-1][1]:raise ValueError('Report background export failed')
+            report_folder=outcomes[-1][0]
+            pages,text=pdf_text(report_folder/'report.pdf')
+            compact=''.join(text.split())
+            for feature in report_data['features']:
+                if feature['status']=='available' and number(feature['value']) not in compact:
+                    raise ValueError('Feature missing from PDF: '+feature['key'])
+            if len(report_data['features'])!=11 or 'T1' not in compact:
+                raise ValueError('Report feature contract differs')
+            dialog.tabs.setCurrentIndex(1);app.processEvents()
+            dialog.grab().save(str(args.output/'report-preview.png'))
+            report_validation=dict(ok=True,folder=report_folder.name,pdf_pages=pages,features=11,
+                p4_source_snapshot_matches=True,background_export=True)
         window.clear_image();app.processEvents()
         if window.export_button.isEnabled() or '未提供' not in window.result_panel.score_label.text():
             raise ValueError('Old result remained after clear')
         gaps=[right-left for left,right in zip(heartbeats,heartbeats[1:])]
-        report=dict(ok=True,pipeline_seconds=elapsed,module_seconds={name:r.elapsed_seconds for name,r in run.modules.items()},
+        report=dict(ok=True,report_validation=report_validation,pipeline_seconds=elapsed,module_seconds={name:r.elapsed_seconds for name,r in run.modules.items()},
             states={name:str(r.state) for name,r in run.modules.items()},reference_abs_differences=differences,
             labels=labels,bundle=bundle.name,view_independent_export=True,clear_invalidates_export=True,
             heartbeat=dict(samples=len(heartbeats),max_gap_seconds=max(gaps,default=None)),
@@ -134,6 +168,7 @@ if __name__=='__main__':
     parser.add_argument('--reference',type=Path,help='Original cached feature JSON (optional)')
     parser.add_argument('--timeout',type=float,default=600)
     parser.add_argument('--expect-partial',action='store_true',help='Verify retained quantification/SVM when A6 fails')
+    parser.add_argument('--report',action='store_true',help='Verify P5 preview, PDF and exact P4 source association')
     arguments=parser.parse_args()
     result=verify(arguments)
     print(json.dumps({key:result[key] for key in ('ok','pipeline_seconds','states','reference_abs_differences','heartbeat','gui_peak_working_set_bytes','gpu_observed_max_used_mib')},ensure_ascii=False))

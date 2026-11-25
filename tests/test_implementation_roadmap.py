@@ -33,11 +33,11 @@ class ImplementationRoadmapTests(unittest.TestCase):
             self.assertEqual(version.strip(), {"P2": "V0.2", "P3": "V0.3", "P4": "V1.0"}.get(stage[:2], '增量（待定）'))
             seen.add(stage)
 
-    def test_new_phases_remain_planned_with_user_priorities(self):
+    def test_incremental_phases_keep_priorities_and_actual_status(self):
         for stage, priority in [('P5', '优先'), ('P6', '建议'), ('P7', '可选')]:
             row = next(line for line in self.text.splitlines() if line.startswith('| '+stage+' |'))
             self.assertIn(priority, row)
-            self.assertIn('已规划未实施', row)
+            self.assertIn('工程实现及自审通过' if stage=='P5' else '已规划未实施', row)
         self.assertIn('不依赖 P6', self.text)
 
 
