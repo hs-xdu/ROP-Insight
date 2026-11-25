@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {
+      "module_id": "ridge",
+      "enabled": true,
+      "adapter_id": "imported_ridge",
+      "device": "cpu",
+      "model_version": "user_imported"
+    },
+    {
+      "module_id": "vessel",
+      "enabled": true,
+      "adapter_id": "vascx_native",
+      "model_version": "vessels_july24_native_reference_refresh",
+      "weights_path": "E:/path/to/vessels_july24.pt",
+      "weights_sha256": "bdabae77502648acd1c176bff6d5e3c8295da60f18f2f84fe1bcd6181d2b2ca4",
+      "runtime_python": "E:/path/to/research/.venv/Scripts/python.exe",
+      "device": "cuda:0",
+      "dependencies": []
+    },
+    {
+      "weights_path": "E:/path/to/A6_shenzhen_best.pt",
+      "weights_sha256": "46d32c4991e304b0a4058bf013847635695e884e7c435552869effe20d241f45",
+      "model_version": "A6_shenzhen_v2_seed42",
+      "model_source": "E:/path/to/a567_rgb_qkv_seed42_20261112_v1",
+      "source_hashes": {
+        "models.py": "a67d92836bd2763286c8a94485737c7156a4d84e27ca4e28f263a011be572f29",
+        "source_snapshot/cross_attention_study/model.py": "d7ea56be36613c029a30c3feaef8d12b69095faccfdb542f4800ef6d3be8eab3"
+      },
+      "device": "cuda:0",
+      "module_id": "staging",
+      "enabled": true,
+      "adapter_id": "a6_shenzhen",
+      "runtime_python": "E:/path/to/research/.venv/Scripts/python.exe",
+      "dependencies": [
+        "ridge",
+        "vessel"
+      ]
+    }
+  ]
+}

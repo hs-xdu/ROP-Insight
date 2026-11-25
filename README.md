@@ -1,5 +1,13 @@
 # ROP-Insight
 
+已按用户选择接入 A6 深圳权重，采用用户导入 Ridge Mask＋真实 VascX Vessel 的分类流程：
+
+```powershell
+.\run-classifier.ps1
+```
+
+先导入原图，再导入对应的二值 Ridge PNG，最后开始分析。步骤与限制见 [A6 接入说明](docs/P2_E_A6.md)。
+
 P2-D 已接入本机原实验 VascX 权重与独立 CUDA 环境。运行真实血管分割：
 
 ```powershell

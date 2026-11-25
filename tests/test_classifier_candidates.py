@@ -10,7 +10,8 @@ class ClassifierCandidatesTests(unittest.TestCase):
     def test_candidate_evidence_has_complete_weights_and_metrics(self):
         docs = Path(__file__).resolve().parents[1] / "docs"
         data = json.loads((docs / "CLASSIFIER_CANDIDATES.json").read_text(encoding="utf-8"))
-        self.assertEqual(data["status"], "awaiting_user_selection")
+        self.assertEqual(data["status"], "user_selected")
+        self.assertEqual(data["selected"], {"model": "A6", "cohort": "shenzhen_v2", "ridge_input": "user_imported"})
         self.assertEqual(data["classes"], ["Normal", "Stage1", "Stage2", "Stage3"])
         candidates = data["candidates"]
         self.assertEqual([c["id"] for c in candidates], ["A0", "A2", "A6", "A7", "M2", "M3", "B2"])

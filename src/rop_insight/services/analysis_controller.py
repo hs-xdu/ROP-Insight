@@ -25,6 +25,7 @@ class AnalysisController(QObject):
         self.config = deepcopy(config if config is not None else default_config())
         self.context = None
         self.current_run = None
+        self.input_outputs = {}
         self._thread = self._worker = None
         self._cancel = Event()
 
@@ -34,12 +35,25 @@ class AnalysisController(QObject):
 
     @property
     def available(self):
-        return any(m.enabled and m.adapter_id in self.registry for m in self.config.modules)
+        enabled = [m for m in self.config.modules if m.enabled and m.adapter_id in self.registry]
+        return bool(enabled) and all(not getattr(self.registry[m.adapter_id], "requires_input", False)
+                                     or m.module_id in self.input_outputs for m in enabled)
 
     def set_document(self, document):
         self.cancel()
         self.context = ImageContext.from_document(document) if document else None
         self.current_run = None
+        self.input_outputs.clear()
+        self.changed.emit()
+
+    def provide_input(self, module_id, output):
+        from rop_insight.inference.base import validate_output
+        if self.context is None:
+            raise ValueError("请先导入原图")
+        validate_output(output, (self.context.image.width(), self.context.image.height()))
+        self.cancel()
+        self.current_run = None
+        self.input_outputs[module_id] = deepcopy(output)
         self.changed.emit()
 
     def start(self):
@@ -62,7 +76,7 @@ class AnalysisController(QObject):
         self._cancel = Event()
         thread = QThread(self)
         worker = AnalysisWorker(context, self.current_run.run_id, deepcopy(modules),
-                                dict(self.registry), self._cancel)
+                                dict(self.registry), self._cancel, deepcopy(self.input_outputs))
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.updated.connect(self._update, Qt.ConnectionType.QueuedConnection)

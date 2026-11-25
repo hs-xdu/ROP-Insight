@@ -81,7 +81,9 @@ class ResultPanel(QWidget):
 
     def show_run(self, run):
         self.status.setText("\n".join(
-            f"{name}：{STATE_NAMES[result.state]}" + (f" · {result.error.message}" if result.error else "")
+            f"{name}：{STATE_NAMES[result.state]}"
+            + ("（用户导入）" if result.output and result.output.values.get("source") == "user_imported_ridge" else "")
+            + (f" · {result.error.message}" if result.error else "")
             for name, result in run.modules.items()))
         classifications = [r.output.classification for r in run.modules.values()
                            if r.state == "success" and r.output and r.output.classification is not None]

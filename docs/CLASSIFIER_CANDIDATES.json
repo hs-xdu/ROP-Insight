@@ -1,5 +1,5 @@
 {
-  "status": "awaiting_user_selection",
+  "status": "user_selected",
   "classes": [
     "Normal",
     "Stage1",
@@ -220,5 +220,10 @@
         }
       ]
     }
-  ]
+  ],
+  "selected": {
+    "model": "A6",
+    "cohort": "shenzhen_v2",
+    "ridge_input": "user_imported"
+  }
 }

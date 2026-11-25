@@ -16,10 +16,11 @@ class AnalysisWorker(QObject):
     updated = pyqtSignal(str, str, object)
     done = pyqtSignal()
 
-    def __init__(self, context, run_id, modules, registry, cancel):
+    def __init__(self, context, run_id, modules, registry, cancel, provided=None):
         super().__init__()
         self.context, self.run_id = context, run_id
         self.modules, self.registry, self.cancel = modules, registry, cancel
+        self.provided = provided or {}
 
     @pyqtSlot()
     def run(self):
@@ -48,9 +49,10 @@ class AnalysisWorker(QObject):
                         adapter = self.registry[config.adapter_id]()
                         image = self.context.image.copy()
                         adapter.validate(image, config)
-                        output = adapter.execute(image, deepcopy({
-                            dep: completed[dep].output for dep in config.dependencies
-                        }), deepcopy(config), self.cancel)
+                        upstream = {dep: completed[dep].output for dep in config.dependencies}
+                        if config.module_id in self.provided:
+                            upstream["$provided"] = self.provided[config.module_id]
+                        output = adapter.execute(image, deepcopy(upstream), deepcopy(config), self.cancel)
                         if self.cancel.is_set():
                             result.state = ModuleState.CANCELLED
                             result.error = ModuleError("cancelled", "任务已取消")

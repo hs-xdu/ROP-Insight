@@ -19,6 +19,8 @@ class ModuleConfig:
     device: str | None = None
     runtime_python: str | None = None
     weights_sha256: str | None = None
+    model_source: str | None = None
+    source_hashes: dict = field(default_factory=dict)
     dependencies: tuple[str, ...] = ()
     preprocessing: dict = field(default_factory=dict)
     postprocessing: dict = field(default_factory=dict)
@@ -51,7 +53,7 @@ def parse_config(data, registry, base_dir=Path.cwd()):
             raise ConfigError("module_id 必须是非空字符串")
         if type(item.get("enabled", False)) is not bool:
             raise ConfigError("enabled 必须是布尔值")
-        for key in ("adapter_id", "model_version", "weights_path", "device", "runtime_python", "weights_sha256"):
+        for key in ("adapter_id", "model_version", "weights_path", "device", "runtime_python", "weights_sha256", "model_source"):
             if item.get(key) is not None and (not isinstance(item[key], str) or not item[key].strip()):
                 raise ConfigError(f"{key} 必须是非空字符串或 null")
         if item.get("weights_sha256") is not None:
@@ -63,7 +65,7 @@ def parse_config(data, registry, base_dir=Path.cwd()):
             raise ConfigError("dependencies 必须是字符串列表")
         if len(deps) != len(set(deps)):
             raise ConfigError("模块依赖重复")
-        for key in ("preprocessing", "postprocessing"):
+        for key in ("preprocessing", "postprocessing", "source_hashes"):
             if not isinstance(item.get(key, {}), dict):
                 raise ConfigError(f"{key} 必须是对象")
         adapter = item.get("adapter_id")
@@ -75,7 +77,7 @@ def parse_config(data, registry, base_dir=Path.cwd()):
             if item.get("device") not in registry[adapter].supported_devices:
                 raise ConfigError(f"{identifier} 的设备不受适配器支持")
         values = dict(item, dependencies=tuple(deps))
-        for field_name in ("weights_path", "runtime_python"):
+        for field_name in ("weights_path", "runtime_python", "model_source"):
             if values.get(field_name):
                 path = Path(values[field_name])
                 values[field_name] = str((Path(base_dir) / path).resolve())

@@ -15,6 +15,7 @@ from rop_insight.ui.image_view import ImageView
 from rop_insight.services.analysis_controller import AnalysisController
 from rop_insight.services.analysis_config import ConfigError
 from rop_insight.ui.result_panel import ResultPanel
+from rop_insight.inference.imported_ridge import load_ridge
 
 
 class LoadState(Enum):
@@ -70,6 +71,9 @@ class MainWindow(QMainWindow):
         self.clear_button = QPushButton("清除图像")
         self.clear_button.clicked.connect(self.clear_image)
         side.addWidget(self.clear_button)
+        self.ridge_button = QPushButton("导入已有 Ridge Mask")
+        self.ridge_button.clicked.connect(self.choose_ridge)
+        side.addWidget(self.ridge_button)
         self.analyze_button = QPushButton("开始分析")
         self.cancel_analysis_button = QPushButton("取消分析")
         self.analysis_label = QLabel("分析模块未配置")
@@ -165,6 +169,7 @@ class MainWindow(QMainWindow):
         """)
 
     def _update_controls(self):
+        self.ridge_button.setEnabled(self.document is not None and not self._closing)
         for control in (self.clear_button, self.zoom_in_button,
                         self.zoom_out_button, self.fit_button):
             control.setEnabled(self.document is not None)
@@ -226,6 +231,26 @@ class MainWindow(QMainWindow):
         except ConfigError as exc:
             self.analysis_label.setText(f"分析配置错误：{exc}")
 
+    def choose_ridge(self):
+        path, _ = QFileDialog.getOpenFileName(self, "导入与当前原图对应的 Ridge Mask", "", "二值 PNG (*.png *.PNG)")
+        if path:
+            self.import_ridge(path)
+
+    def import_ridge(self, path):
+        if self.document is None:
+            return False
+        try:
+            output = load_ridge(path, self.document.image.size())
+            self.analysis.provide_input("ridge", output)
+        except (ValueError, OSError) as exc:
+            self.error_label.setText(f"Ridge Mask 导入失败：{exc}")
+            self.error_label.show()
+            return False
+        self.error_label.hide()
+        self.ridge_button.setText("重新导入 Ridge Mask")
+        self.ridge_button.setToolTip("用户提供的 Ridge Mask：" + str(path))
+        return True
+
     def _update_analysis(self):
         run_id = self.analysis.current_run.run_id if self.analysis.current_run else None
         if run_id != self._display_run_id or run_id is None:
@@ -233,6 +258,14 @@ class MainWindow(QMainWindow):
             self._displayed_masks.clear()
             self.view.clear_results()
             self.result_panel.reset()
+            for output in self.analysis.input_outputs.values():
+                for mask in output.masks:
+                    self.view.set_mask(mask)
+                    self._displayed_masks[mask.structure] = mask
+            self.result_panel.set_available(set(self._displayed_masks))
+            if not self.analysis.input_outputs:
+                self.ridge_button.setText("导入已有 Ridge Mask")
+                self.ridge_button.setToolTip("")
         self.analyze_button.setEnabled(
             self.analysis.context is not None and self.analysis.available
             and not self.analysis.busy and not self._closing)
@@ -253,7 +286,9 @@ class MainWindow(QMainWindow):
             if failures:
                 text += "\n" + "\n".join(failures)
         elif not self.analysis.available:
-            text = "分析模块未配置"
+            needs_input = any(m.enabled and getattr(self.analysis.registry.get(m.adapter_id), "requires_input", False)
+                              and m.module_id not in self.analysis.input_outputs for m in self.analysis.config.modules)
+            text = "请导入对应原图的 Ridge Mask" if needs_input else "分析模块未配置"
         else:
             text = "可以开始分析" if self.analysis.context else "请先导入图像"
         self.analysis_label.setText(text)
@@ -287,6 +322,7 @@ class MainWindow(QMainWindow):
             self._closing = True
             self.import_button.setEnabled(False)
             self.clear_button.setEnabled(False)
+            self.ridge_button.setEnabled(False)
             self.analysis.cancel()
             event.ignore()
         else:
