@@ -33,9 +33,26 @@ class ImageContext:
 
 
 @dataclass(frozen=True)
+class MaskData:
+    """Original-image aligned H×W uint8 binary mask, without row padding."""
+    structure: str
+    width: int
+    height: int
+    pixels: bytes
+
+
+@dataclass(frozen=True)
+class ClassificationData:
+    # Canonical order: Normal, Stage 1, Stage 2, Stage 3.
+    probabilities: tuple[float, float, float, float]
+
+
+@dataclass(frozen=True)
 class AnalysisOutput:
-    """Validated JSON payload; array/native artifacts can be added in later phases."""
+    """Validated JSON plus immutable original-aligned display results."""
     values: dict
+    masks: tuple[MaskData, ...] = ()
+    classification: ClassificationData | None = None
 
 
 @dataclass(frozen=True)

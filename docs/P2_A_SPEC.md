@@ -2,7 +2,7 @@
 
 ## 1. 状态与目标
 
-状态：用户已批准实施，代码已实现，人工验收待确认；详见 [P2-A 验收记录](P2_A_VALIDATION.md)。依据 [实施路线图](IMPLEMENTATION_ROADMAP.md)、[技术方案](TECHNICAL_PLAN.md) 与 [第二版设计](DESIGN_V2.md)，本任务只搭建可复用的结果契约、配置及后台调度基础，不代表 P2 或 V0.2 已完成。
+状态：代码已实现，用户已确认验收完成；详见 [P2-A 验收记录](P2_A_VALIDATION.md)。依据 [实施路线图](IMPLEMENTATION_ROADMAP.md)、[技术方案](TECHNICAL_PLAN.md) 与 [第二版设计](DESIGN_V2.md)，本任务只搭建可复用的结果契约、配置及后台调度基础，不代表 P2 或 V0.2 已完成。
 
 用户已同意实施本计划；以下为实施范围与验收基准，模型权重不是本阶段前置条件。
 

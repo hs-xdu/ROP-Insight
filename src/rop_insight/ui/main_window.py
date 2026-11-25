@@ -14,6 +14,7 @@ from rop_insight.services.image_loader import ImageLoader, ImageLoadError
 from rop_insight.ui.image_view import ImageView
 from rop_insight.services.analysis_controller import AnalysisController
 from rop_insight.services.analysis_config import ConfigError
+from rop_insight.ui.result_panel import ResultPanel
 
 
 class LoadState(Enum):
@@ -31,6 +32,8 @@ class MainWindow(QMainWindow):
         self.state = LoadState.EMPTY
         self.analysis = controller if controller is not None else AnalysisController(parent=self)
         self._closing = False
+        self._display_run_id = None
+        self._displayed_masks = {}
         self.setWindowTitle("ROP-Insight · 眼底图像工作台")
         self.resize(1180, 780)
         self.setMinimumSize(800, 560)
@@ -80,6 +83,10 @@ class MainWindow(QMainWindow):
         self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
         self.analysis.changed.connect(self._update_analysis)
         self.analysis.idle.connect(self._analysis_idle)
+        self.result_panel = ResultPanel()
+        side.addWidget(self.result_panel)
+        self.result_panel.layers_changed.connect(self._change_layers)
+        self.analysis.result_changed.connect(self._show_results)
         side.addSpacing(12)
         self.name_label = QLabel("—")
         self.name_label.setWordWrap(True)
@@ -220,6 +227,12 @@ class MainWindow(QMainWindow):
             self.analysis_label.setText(f"分析配置错误：{exc}")
 
     def _update_analysis(self):
+        run_id = self.analysis.current_run.run_id if self.analysis.current_run else None
+        if run_id != self._display_run_id or run_id is None:
+            self._display_run_id = run_id
+            self._displayed_masks.clear()
+            self.view.clear_results()
+            self.result_panel.reset()
         self.analyze_button.setEnabled(
             self.analysis.context is not None and self.analysis.available
             and not self.analysis.busy and not self._closing)
@@ -244,6 +257,30 @@ class MainWindow(QMainWindow):
         else:
             text = "可以开始分析" if self.analysis.context else "请先导入图像"
         self.analysis_label.setText(text)
+
+    def _show_results(self, run):
+        if (self.analysis.context is None or self.analysis.current_run is None
+                or (run.image_id, run.run_id) != (self.analysis.context.image_id, self.analysis.current_run.run_id)):
+            return
+        if self._display_run_id != run.run_id:
+            self._display_run_id = run.run_id
+            self._displayed_masks.clear()
+            self.view.clear_results()
+            self.result_panel.reset()
+        for result in run.modules.values():
+            if result.state == "success" and result.output:
+                for mask in result.output.masks:
+                    if self._displayed_masks.get(mask.structure) != mask:
+                        self.view.set_mask(mask)
+                        self._displayed_masks[mask.structure] = mask
+        self.result_panel.set_available(set(self._displayed_masks))
+        self.result_panel.show_run(run)
+
+    def _change_layers(self):
+        self.view.display_mode = self.result_panel.mode.currentData()
+        self.view.overlay_opacity = self.result_panel.opacity.value() / 100
+        self.view.overlay_enabled = {name: check.isChecked() for name, check in self.result_panel.checks.items()}
+        self.view.update_layers()
 
     def closeEvent(self, event):
         if self.analysis.busy:

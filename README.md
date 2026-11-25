@@ -1,5 +1,13 @@
 # ROP-Insight
 
+P2-A 已经用户确认验收。P2-B 增加 Mask 图层、透明度和概率面板，使用以下合成数据窗口检查展示效果：
+
+```powershell
+.\.venv\Scripts\python.exe tests/manual_p2_b.py
+```
+
+步骤见 [P2-B 实施说明](docs/P2_B_SPEC.md)。正常启动不包含合成输出，也尚未接入真实模型。
+
 P2-A 已实现后台任务基础，真实模型尚未接入。正常启动显示“分析模块未配置”；后台响应、取消和安全关闭可用测试专用窗口验收：
 
 ```powershell

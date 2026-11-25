@@ -55,7 +55,7 @@ class AnalysisWorker(QObject):
                             result.state = ModuleState.CANCELLED
                             result.error = ModuleError("cancelled", "任务已取消")
                         else:
-                            validate_output(output)
+                            validate_output(output, (image.width(), image.height()))
                             result.output = deepcopy(output)
                             result.state = ModuleState.SUCCESS
                     except Exception as exc:

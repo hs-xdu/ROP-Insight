@@ -3,7 +3,7 @@
 import math
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPainter, QPixmap
+from PyQt6.QtGui import QPainter, QPixmap, QImage, QColor
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsView
 
 
@@ -14,6 +14,11 @@ class ImageView(QGraphicsView):
         super().__init__(parent)
         self.setScene(QGraphicsScene(self))
         self.item = None
+        self.mask_items = {}
+        self.overlay_items = {}
+        self.display_mode = "original"
+        self.overlay_enabled = {"ridge": True, "vessel": True}
+        self.overlay_opacity = 0.5
         self.fit_mode = True
         self.min_scale = 0.01
         self.max_scale = 32.0
@@ -41,12 +46,54 @@ class ImageView(QGraphicsView):
     def clear_image(self):
         self.scene().clear()
         self.item = None
+        self.mask_items.clear()
+        self.overlay_items.clear()
+        self.display_mode = "original"
         self.resetTransform()
         self.setSceneRect(0, 0, 0, 0)
         self.fit_mode = True
         self.setDragMode(self.DragMode.NoDrag)
         self.zoom_changed.emit(0.0)
         self.viewport().update()
+
+    def clear_results(self):
+        for item in (*self.mask_items.values(), *self.overlay_items.values()):
+            self.scene().removeItem(item)
+        self.mask_items.clear()
+        self.overlay_items.clear()
+        self.display_mode = "original"
+        if self.item is not None:
+            self.item.show()
+
+    def set_mask(self, mask):
+        from rop_insight.models.analysis_result import AnalysisOutput
+        from rop_insight.inference.base import validate_output
+        if self.item is None:
+            raise ValueError("请先导入图像")
+        size = self.item.pixmap().size()
+        validate_output(AnalysisOutput({}, masks=(mask,)), (size.width(), size.height()))
+        binary = QImage(mask.pixels, mask.width, mask.height, mask.width,
+                        QImage.Format.Format_Indexed8).copy()
+        binary.setColorTable([QColor("black").rgba(), QColor("white").rgba()])
+        colored = binary.copy()
+        color = "#fb7185" if mask.structure == "ridge" else "#22d3ee"
+        colored.setColorTable([0, QColor(color).rgba()])
+        for collection, image, z in ((self.mask_items, binary, 1), (self.overlay_items, colored, 2)):
+            if mask.structure in collection:
+                self.scene().removeItem(collection.pop(mask.structure))
+            item = self.scene().addPixmap(QPixmap.fromImage(image))
+            item.setZValue(z)
+            collection[mask.structure] = item
+        self.update_layers()
+
+    def update_layers(self):
+        if self.item is not None:
+            self.item.setVisible(self.display_mode in ("original", "overlay"))
+        for structure, item in self.mask_items.items():
+            item.setVisible(self.display_mode == structure)
+        for structure, item in self.overlay_items.items():
+            item.setVisible(self.display_mode == "overlay" and self.overlay_enabled[structure])
+            item.setOpacity(self.overlay_opacity)
 
     def fit_image(self):
         if self.item is None:
