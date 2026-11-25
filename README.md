@@ -1,5 +1,7 @@
 # ROP-Insight
 
+结构量化入口：`run-quantification.ps1`。导入原图及 Ridge Mask 后，运行真实血管分割、A6 分类和原实验十项量化；说明与验收见 [P3-A 记录](docs/P3_A.md)。
+
 已按用户选择接入 A6 深圳权重，采用用户导入 Ridge Mask＋真实 VascX Vessel 的分类流程：
 
 ```powershell

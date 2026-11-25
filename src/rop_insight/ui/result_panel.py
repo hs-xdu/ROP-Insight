@@ -7,6 +7,11 @@ from PyQt6.QtWidgets import (QWidget, QVBoxLayout, QComboBox, QLabel, QSlider,
 CLASSES = ("Normal", "Stage 1", "Stage 2", "Stage 3")
 STATE_NAMES = {"pending": "等待", "running": "运行中", "success": "成功", "failed": "失败",
                "skipped": "跳过", "cancelled": "已取消"}
+METRIC_NAMES = {"ridge_area_ratio_fov": "Ridge 面积比例", "ridge_solidity": "Ridge 实心度",
+                "ridge_outer_vessel_density": "Ridge 外环血管密度", "ridge_max_radius_ratio": "Ridge 最大径向位置",
+                "vessel_area_density_fov": "血管密度 VD", "fractal_dimension": "分形维数 FD",
+                "sliding_window_max_density_gradient": "最大局部密度变化", "T3": "血管迂曲度 T3",
+                "B3": "血管分支 B3", "S_median": "S_median"}
 
 
 class ResultPanel(QWidget):
@@ -44,6 +49,11 @@ class ResultPanel(QWidget):
         self.status.setWordWrap(True)
         self.status.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.status)
+        self.metrics_label = QLabel("量化指标：未提供")
+        self.metrics_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.metrics_label.setWordWrap(True)
+        self.metrics_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        layout.addWidget(self.metrics_label)
         self.prediction = QLabel()
         layout.addWidget(self.prediction)
         self.bars = []
@@ -60,6 +70,7 @@ class ResultPanel(QWidget):
         self.layers_changed.emit()
 
     def reset(self):
+        self.metrics_label.setText("量化指标：未提供")
         self.status.setText("暂无分析结果")
         self.prediction.setText("分期：未提供")
         for bar in self.bars:
@@ -80,6 +91,12 @@ class ResultPanel(QWidget):
             self.mode.setCurrentIndex(0)
 
     def show_run(self, run):
+        for result in run.modules.values():
+            if result.state == "success" and result.output and "metrics" in result.output.values:
+                self.metrics_label.setText("结构量化\n" + "\n".join(
+                    f"{METRIC_NAMES.get(name,name)}：{metric['value']:.6g} {metric['unit']}（{metric['grid']}网格）" if metric['value'] is not None
+                    else f"{METRIC_NAMES.get(name,name)}：不可用 · {metric['reason']}"
+                    for name, metric in result.output.values['metrics'].items()))
         self.status.setText("\n".join(
             f"{name}：{STATE_NAMES[result.state]}"
             + ("（用户导入）" if result.output and result.output.values.get("source") == "user_imported_ridge" else "")
