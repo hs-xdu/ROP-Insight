@@ -1,5 +1,9 @@
 # ROP-Insight
 
+完整研究平台入口：`.\run-platform.ps1`。导入原图和已有 Ridge Mask，开始分析，结束后可“导出分析结果”，生成独立目录中的 JSON、二值 Mask PNG 和原图坐标叠加图。
+
+启动、自检、配置与复现见 [运行手册](docs/RUNBOOK.md)；导出字段见 [P4-A](docs/P4_A.md)，系统自审与剩余限制见 [P4-B](docs/P4_B_VALIDATION.md)，论文材料见 [索引](docs/THESIS_MATERIALS.md)。当前为手动 Ridge 的研究原型，自动 Ridge 仍暂缓。
+
 P3-B 评分与辅助分类入口：`.\run-scoring.ps1`。导入原图及 Ridge 后开始分析，向下滚动左侧结果，可分别查看连续评分/95% 后验区间、RBF-SVM 类别及 A6 概率。原冻结 SVM 使用含 T1 的 11 项特征，说明与验收见 [P3-B 记录](docs/P3_B.md)。
 
 结构量化入口：`run-quantification.ps1`。导入原图及 Ridge Mask 后，运行真实血管分割、A6 分类和原实验十项量化；说明与验收见 [P3-A 记录](docs/P3_A.md)。
@@ -18,7 +22,7 @@ P2-D 已接入本机原实验 VascX 权重与独立 CUDA 环境。运行真实�
 .\run-vessel.ps1
 ```
 
-导入图像并点击“开始分析”，成功后在左侧选择 Vessel Mask 或叠加显示。配置与验收见 [P2-D 说明](docs/P2_D_SPEC.md)。Ridge 按用户要求暂缓，分类尚未接入。
+导入图像并点击“开始分析”，成功后在左侧选择 Vessel Mask 或叠加显示。配置与验收见 [P2-D 说明](docs/P2_D_SPEC.md)。自动 Ridge 按用户要求暂缓，完整平台采用导入 Ridge 后运行 A6。
 
 P2-A 已经用户确认验收。P2-B 增加 Mask 图层、透明度和概率面板，使用以下合成数据窗口检查展示效果：
 

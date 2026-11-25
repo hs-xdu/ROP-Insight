@@ -1,4 +1,5 @@
 import pytest
+import hashlib
 from PyQt6.QtCore import QFile
 
 from rop_insight.services.image_loader import ImageLoader, ImageLoadError
@@ -17,6 +18,7 @@ def test_supported_images_and_metadata(image_file, name, fmt, expected):
     assert document.format == expected
     assert not document.image.isNull()
     assert path.read_bytes() == before
+    assert document.file_sha256 == hashlib.sha256(before).hexdigest()
 
 
 def test_bad_files(tmp_path, image_file):

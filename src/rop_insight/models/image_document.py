@@ -11,6 +11,7 @@ class ImageDocument:
     path: Path
     image: QImage
     format: str
+    file_sha256: str | None = None
 
     @property
     def resolution(self) -> str:

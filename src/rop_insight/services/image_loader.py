@@ -1,6 +1,7 @@
 """Bounded image decoding without UI dependencies."""
 
 from pathlib import Path
+import hashlib
 
 from PyQt6.QtCore import QFile, QIODevice
 from PyQt6.QtGui import QImageReader
@@ -45,6 +46,14 @@ class ImageLoader:
             image = reader.read()
             if image.isNull():
                 raise ImageLoadError("图像解码失败，文件可能损坏或超出内存限制。")
-            return ImageDocument(path.resolve(), image, expected.upper())
+            if not file.seek(0):
+                raise ImageLoadError("无法读取图像追溯信息。")
+            digest = hashlib.sha256()
+            while not file.atEnd():
+                chunk = file.read(1024 * 1024)
+                if not chunk and file.error() != QFile.FileError.NoError:
+                    raise ImageLoadError("读取图像追溯信息失败。")
+                digest.update(bytes(chunk))
+            return ImageDocument(path.resolve(), image, expected.upper(), digest.hexdigest())
         finally:
             file.close()

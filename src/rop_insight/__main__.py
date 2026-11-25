@@ -13,11 +13,7 @@ from rop_insight.services.analysis_config import load_config, ConfigError
 from rop_insight.services.analysis_controller import AnalysisController
 from PyQt6.QtCore import QStandardPaths
 from PyQt6.QtWidgets import QMessageBox
-from rop_insight.inference.vascx import VascXAdapter
-from rop_insight.inference.a6 import A6Adapter
-from rop_insight.inference.imported_ridge import ImportedRidgeAdapter
-from rop_insight.inference.quantification import QuantificationAdapter
-from rop_insight.inference.svm import FrozenSVMAdapter
+from rop_insight.inference.registry import production_registry
 
 
 def main():
@@ -37,9 +33,7 @@ def main():
     except OSError:
         logging.basicConfig(level=logging.INFO)
     try:
-        registry = {"vascx_native": VascXAdapter, "a6_shenzhen": A6Adapter,
-                    "imported_ridge": ImportedRidgeAdapter, "chapter5_quant": QuantificationAdapter,
-                    "chapter5_svm": FrozenSVMAdapter}
+        registry = production_registry()
         controller = AnalysisController(config=load_config(args.config, registry) if args.config else None,
                                         registry=registry)
     except ConfigError as exc:

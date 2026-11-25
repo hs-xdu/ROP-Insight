@@ -12,6 +12,7 @@ from rop_insight.models.analysis_result import (
 )
 from rop_insight.services.analysis_config import default_config, ordered_modules, parse_config
 from rop_insight.services.analysis_worker import AnalysisWorker
+from rop_insight.services.build_info import code_identity
 
 
 class AnalysisController(QObject):
@@ -65,7 +66,8 @@ class AnalysisController(QObject):
         data["modules"] = [dict(item, dependencies=list(item["dependencies"])) for item in data["modules"]]
         config = parse_config(data, self.registry)
         modules = ordered_modules(config)
-        context = ImageContext(self.context.image_id, self.context.image.copy(), self.context.source)
+        from dataclasses import replace
+        context = replace(self.context, image=self.context.image.copy())
         try:
             software_version = version("rop-insight")
         except PackageNotFoundError:
@@ -73,6 +75,7 @@ class AnalysisController(QObject):
         self.current_run = AnalysisRun(str(uuid4()), context.image_id, deepcopy(config), {
             m.module_id: ModuleResult(m.module_id, model_version=m.model_version) for m in modules
         }, software_version=software_version)
+        self.current_run.code_revision, self.current_run.code_dirty = code_identity()
         self._cancel = Event()
         thread = QThread(self)
         worker = AnalysisWorker(context, self.current_run.run_id, deepcopy(modules),

@@ -26,10 +26,12 @@ class ImageContext:
     image_id: str
     image: QImage
     source: str
+    file_sha256: str | None = None
+    format: str | None = None
 
     @classmethod
     def from_document(cls, document):
-        return cls(str(uuid4()), document.image.copy(), str(document.path))
+        return cls(str(uuid4()), document.image.copy(), str(document.path), document.file_sha256, document.format)
 
 
 @dataclass(frozen=True)
@@ -82,3 +84,5 @@ class AnalysisRun:
     finished_at: str | None = None
     software_version: str = "unknown"
     status: str = "running"
+    code_revision: str | None = None
+    code_dirty: bool | None = None
