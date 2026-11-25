@@ -4,6 +4,8 @@
 
 用户提供本地源码 `C:\Python\PythonProjects2025\ropai`，并确认保留当前 ROP-Insight，仅借鉴相关代码，不迁入旧平台整体。本轮为只读源码盘点和规划补充，未执行旧服务、连接数据库、读取患者结果/图像、运行旧分类器或修改 ropai 文件；没有开始 P5—P7 功能实现。
 
+用户随后补充报告源码 `C:\Python\PythonProjects2025\ROP_DeviceAgnostic_Features\deploy_rop_report_web`，已只读核对其报告模板、分档规则、提取入口和界面；模板已定位，尚未迁移。该目录同样未被修改或启动服务，详细评估见第6节。
+
 检查覆盖 `ROP_Classifier_App` 的说明及聚合逻辑、`ropaiweb` 的接口/worker/血管分析桥接代码、`ropaih5` 的结果页面与相关脚本。以下是本地静态代码发现，不等于旧系统运行验收。
 
 ## 2. 可借鉴模块与边界
@@ -16,7 +18,7 @@
 | P7 历史查看 | `ropaiweb/main.py` 的 get_patient_list、get_patient_by_id、get_ret_by_pic_id | 分页、按编号查询、运行状态和既有结果查看 | 用当前导出目录/JSON实现本地列表和报告重开，不迁移SQL、数据库或HTTP服务 |
 | 运行隔离参考 | `ropaiweb/vascular_bridge.py`、vascular_analyze.py | 独立科学环境、质量规则、不可用状态和固定后验语义 | 当前平台已有已验证实现，保留现有算法，只参考字段语义，不替换函数或环境 |
 
-目前在上述已检查源码中定位到的是结果卡片和查询接口，尚未定位到独立的文字报告模板或 PDF 导出模块；也未将某个可选函数包装段视为已完成的历史页面。用户已表示另有模板或相关源码，将补充实际路径；该资料尚未核对，P5模板暂不定稿。收到路径后先核对字段与当前输出，再按固定模板规划实施，不因此依赖旧平台运行。
+在 ropai 中定位到的是结果卡片和查询接口，也未将可选函数包装段视为已完成的历史页面。独立文字模板已在用户补充的 deploy_rop_report_web 中定位，输出为 Markdown/TXT；已检查源码尚未定位PDF生成实现。P5将借鉴该模板结构，适配当前输出和缺失规则，PDF仍由当前PyQt6实现，不依赖旧平台运行。
 
 ## 3. 不能直接照搬的差异
 
@@ -33,9 +35,9 @@
 
 ### P5 优先：先内容与模板，再预览/PDF
 
-第一步定义当前分析快照到报告数据的映射，借鉴旧卡片的字段组织/单位/区间说明，补齐 Ridge、T1、11项特征、SVM、版本与限制。验证完整、部分失败、不可用及不同运行不混用，文字只按固定规则生成。
+第一步定义当前分析快照到报告数据的映射，以已找到的 template.py 简化/详细报告结构为参考，补齐 A6、真实导入Ridge、T1、11项特征、评分区间、SVM、版本与限制。不迁入旧经验分档，验证完整、部分失败、不可用及不同运行不混用，文字只按固定规则生成。
 
-第二步实现 PyQt6 报告预览与PDF，预览/PDF共用报告数据；核对中文、分页、数值和既有JSON一致性、文件失败与防覆盖。P5不依赖旧数据库或P6病例信息。若用户另提供实际模板，先核对模板字段与当前输出的对应关系，不迁入其中未经模型支持的临床结论。
+第二步实现 PyQt6 报告预览与PDF，预览/PDF共用报告数据；核对中文、分页、数值和既有JSON一致性、文件失败与防覆盖。P5不依赖旧数据库或P6病例信息，不迁入模板中未经当前模型支持的临床结论。
 
 ### P6 建议：本地匿名病例字段与关联
 
@@ -59,3 +61,37 @@
 | ROP_Classifier_App/rop_app/aggregate.py | df42d041ccdc592eee994ef0c7c97dc005fe5cea3db93e4c1ea14025484b6491 |
 
 完整功能范围见 [第二版设计](DESIGN_V2.md)，实施与验收顺序见 [路线图](IMPLEMENTATION_ROADMAP.md)，技术选型见 [技术方案](TECHNICAL_PLAN.md)。本评估不宣称PDF、匿名病例或本地历史功能已经迁移完成。
+
+## 6. 补充报告源码的评估
+
+### 6.1 已定位的实际实现
+
+相对路径基于用户补充的 deploy_rop_report_web 目录：
+
+| 相对源码路径 | 已有能力 |
+| --- | --- |
+| report/template.py | render_simple_impression 生成简化报告；render_report_md 生成详细Markdown；md_to_txt 转为纯文本 |
+| report/feature_bins.py | 12项血管 + 10项嵴代理的固定经验分档，源码说明为“经验区间，非诊断阈值” |
+| report/extract_one.py | 旧图像→分割→特征→报告流水线，保存简化/详细MD/TXT及血管叠加预览 |
+| report/app_gradio.py | Gradio预览与文件下载入口，不是当前PyQt6界面 |
+
+可借鉴固定模板、简化/详细层次、项目名称/单位展示、说明章节和纯文本转换。当前P5只从已完成分析快照生成报告，不调用旧 extract_one_image 重做分割/量化，不安装Gradio/conda/旧VascX或修改当前原实验环境。独立PDF实现尚未在这份检查范围中定位，PDF预览/排版/导出仍是新平台P5实现任务。
+
+### 6.2 字段与规则适配
+
+22项旧分档字段与当前11项模型特征仅有3个同名：fractal_dimension、vessel_area_density_fov、sliding_window_max_density_gradient。同名不证明算法与尺度等价；旧提取入口注明特征在原图分辨率提取，当前协议则区分512与原生1024网格，不能套用旧经验阈值。
+
+当前 T1、T3、B3、Ridge面积比例/实心度/外环血管密度/最大径向位置、S_median 没有相应的旧分档项。尤其不能将旧 median_tortuosity 或 Top5迂曲指标当作当前 T1/T3，也不能将基于血管化前沿的“嵴代理”当作用户导入真实Ridge的四项特征。
+
+旧模板还不包含当前 A6四类概率、冻结SVM或当前后验评分的完整字段，因此不直接将当前11项数值传入旧 render_simple_impression。它的缺省分支可能将缺失输入写成中等/常见范围，新适配器必须先检查状态，缺失只写不可用及原因；同时覆盖 None、NaN、Infinity，不继承旧格式化仅判NaN的行为。
+
+模板中的经验分档、“plus样改变”“分区倾向”及“综合印象”等旧规则不直接迁入。P5先按当前结果作事实性表述，不新增诊断、风险阈值或未经验证的解释；将来若确需这些解释，需另行提供阈值来源、尺度适用性及对应验证。保留模板的研究用途说明，补齐当前手动Ridge、部分失败、独立分类和版本追溯说明。
+
+### 6.3 补充源码身份
+
+| 相对源码路径 | SHA-256 |
+| --- | --- |
+| report/template.py | 87c7bcc5816808041d68abb4487151cfd5faf804b3c17ec43d25afd624ab54cd |
+| report/feature_bins.py | eb9c5d1f17da1576a9d60b099bab878c8b0c4789da7384c367b31e9f3a13fe2d |
+| report/extract_one.py | 1485b507de63518d7df048f1760b4c2d37e89f67dfda8630bfb7e6e27912a920 |
+| report/app_gradio.py | 6be5fe5dde5e4b19705b164b6fc5ac3a2577f0090caf2ed5615bc60ada0f529c |
