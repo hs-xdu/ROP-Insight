@@ -30,6 +30,46 @@ def test_initial_state(window):
     assert not window.fit_button.isEnabled()
 
 
+@pytest.mark.parametrize("size", [(1180, 780), (800, 560)])
+def test_sidebar_geometry_survives_repeated_long_names(window, qtbot, image_file, monkeypatch, size):
+    from PyQt6.QtWidgets import QScrollArea
+    window.resize(*size)
+    scroll = window.findChild(QScrollArea)
+    sidebar = scroll.widget()
+    controls = (window.import_button, window.clear_button,
+                window.analyze_button, window.cancel_analysis_button)
+    QApplication.processEvents()
+    initial = [(button.x(), button.width(), button.height()) for button in controls]
+    names = ["short.png", "1区2期_20240273-20240807_OS_" + "189fc1ef-4309-40c4-9d3e-670baf29e855" + ".png",
+             "a" * 150 + ".png", "short-again.png"]
+    for name in names:
+        path = image_file(name)
+        monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, p=path: (str(p), ""))
+        qtbot.mouseClick(window.import_button, Qt.MouseButton.LeftButton)
+        QApplication.processEvents()
+        assert sidebar.width() == 250
+        assert scroll.horizontalScrollBar().maximum() == 0
+        assert [(b.x(), b.width(), b.height()) for b in controls] == initial
+        assert window.name_label.text() == name
+        assert window.name_label.toolTip() == str(path.resolve())
+        assert window.name_label.width() <= sidebar.width() - 36
+        assert window.name_label.height() >= window.name_label.heightForWidth(window.name_label.width())
+        for button in controls:
+            assert button.geometry().right() < sidebar.width()
+    window.clear_image()
+    QApplication.processEvents()
+    assert [(b.x(), b.width(), b.height()) for b in controls] == initial
+
+
+def test_long_analysis_error_does_not_widen_sidebar(window):
+    from PyQt6.QtWidgets import QScrollArea
+    scroll = window.findChild(QScrollArea)
+    window.analysis_label.setText("模块异常：" + "very_long_model_identifier_" * 12)
+    QApplication.processEvents()
+    assert scroll.widget().width() == 250
+    assert window.analyze_button.geometry().right() < 250
+
+
 @pytest.mark.parametrize("width,height", [(1400, 600), (600, 1400)])
 def test_fit_and_resize(window, image_file, qtbot, width, height):
     assert window.load_image(image_file(width=width, height=height))

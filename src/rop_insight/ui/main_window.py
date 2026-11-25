@@ -7,7 +7,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QVBoxLayout, QWidget, QScrollArea, QLayout,
+    QVBoxLayout, QWidget, QScrollArea, QLayout, QSizePolicy,
 )
 
 from rop_insight.services.image_loader import ImageLoader, ImageLoadError
@@ -53,7 +53,9 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(250)
         side = QVBoxLayout(sidebar)
-        side.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        # Content may grow vertically, but long filenames must never widen the panel.
+        side.setSizeConstraints(QLayout.SizeConstraint.SetNoConstraint,
+                                QLayout.SizeConstraint.SetMinimumSize)
         side.setContentsMargins(18, 22, 18, 22)
         side.setSpacing(14)
         side.addWidget(QLabel("图像管理"))
@@ -69,6 +71,7 @@ class MainWindow(QMainWindow):
         self.cancel_analysis_button = QPushButton("取消分析")
         self.analysis_label = QLabel("分析模块未配置")
         self.analysis_label.setWordWrap(True)
+        self.analysis_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.analysis_label.setTextFormat(Qt.TextFormat.PlainText)
         side.addWidget(self.analyze_button)
         side.addWidget(self.cancel_analysis_button)
@@ -80,6 +83,7 @@ class MainWindow(QMainWindow):
         side.addSpacing(12)
         self.name_label = QLabel("—")
         self.name_label.setWordWrap(True)
+        self.name_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.name_label.setTextFormat(Qt.TextFormat.PlainText)
         self.resolution_label = QLabel("—")
         self.format_label = QLabel("—")
