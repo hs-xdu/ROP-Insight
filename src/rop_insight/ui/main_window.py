@@ -7,11 +7,13 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QVBoxLayout, QWidget,
+    QVBoxLayout, QWidget, QScrollArea, QLayout,
 )
 
 from rop_insight.services.image_loader import ImageLoader, ImageLoadError
 from rop_insight.ui.image_view import ImageView
+from rop_insight.services.analysis_controller import AnalysisController
+from rop_insight.services.analysis_config import ConfigError
 
 
 class LoadState(Enum):
@@ -22,11 +24,13 @@ class LoadState(Enum):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, loader=None):
+    def __init__(self, loader=None, controller=None):
         super().__init__()
         self.loader = loader or ImageLoader()
         self.document = None
         self.state = LoadState.EMPTY
+        self.analysis = controller if controller is not None else AnalysisController(parent=self)
+        self._closing = False
         self.setWindowTitle("ROP-Insight · 眼底图像工作台")
         self.resize(1180, 780)
         self.setMinimumSize(800, 560)
@@ -49,6 +53,7 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(250)
         side = QVBoxLayout(sidebar)
+        side.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         side.setContentsMargins(18, 22, 18, 22)
         side.setSpacing(14)
         side.addWidget(QLabel("图像管理"))
@@ -60,6 +65,18 @@ class MainWindow(QMainWindow):
         self.clear_button = QPushButton("清除图像")
         self.clear_button.clicked.connect(self.clear_image)
         side.addWidget(self.clear_button)
+        self.analyze_button = QPushButton("开始分析")
+        self.cancel_analysis_button = QPushButton("取消分析")
+        self.analysis_label = QLabel("分析模块未配置")
+        self.analysis_label.setWordWrap(True)
+        self.analysis_label.setTextFormat(Qt.TextFormat.PlainText)
+        side.addWidget(self.analyze_button)
+        side.addWidget(self.cancel_analysis_button)
+        side.addWidget(self.analysis_label)
+        self.analyze_button.clicked.connect(self.start_analysis)
+        self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
+        self.analysis.changed.connect(self._update_analysis)
+        self.analysis.idle.connect(self._analysis_idle)
         side.addSpacing(12)
         self.name_label = QLabel("—")
         self.name_label.setWordWrap(True)
@@ -77,7 +94,13 @@ class MainWindow(QMainWindow):
         hint = QLabel("滚轮缩放 · 按住鼠标左键拖动\n点击「适应窗口」查看完整图像")
         hint.setWordWrap(True)
         side.addWidget(hint)
-        body.addWidget(sidebar)
+        sidebar_scroll = QScrollArea()
+        sidebar_scroll.setWidgetResizable(True)
+        sidebar_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        sidebar_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        sidebar_scroll.setFixedWidth(270)
+        sidebar_scroll.setWidget(sidebar)
+        body.addWidget(sidebar_scroll)
         viewer_column = QVBoxLayout()
         body.addLayout(viewer_column, 1)
         controls = QHBoxLayout()
@@ -110,6 +133,7 @@ class MainWindow(QMainWindow):
         action.triggered.connect(self.choose_image)
         self.addAction(action)
         self._update_controls()
+        self._update_analysis()
         self.statusBar().showMessage("未加载 · 请选择一张眼底图像")
         self.setStyleSheet("""
             QMainWindow, QWidget { background: #f3f6fa; color: #334155;
@@ -161,6 +185,7 @@ class MainWindow(QMainWindow):
             return False
         self.view.set_image(document.image)
         self.document = document
+        self.analysis.set_document(document)
         self.name_label.setText(document.path.name)
         self.name_label.setToolTip(str(document.path))
         self.resolution_label.setText(document.resolution + " px")
@@ -171,6 +196,7 @@ class MainWindow(QMainWindow):
         return True
 
     def clear_image(self):
+        self.analysis.set_document(None)
         self.document = None
         self.view.clear_image()
         self.name_label.setText("—")
@@ -182,3 +208,49 @@ class MainWindow(QMainWindow):
         self.state = LoadState.EMPTY
         self._update_controls()
         self.statusBar().showMessage("未加载 · 请选择一张眼底图像")
+
+    def start_analysis(self):
+        try:
+            self.analysis.start()
+        except ConfigError as exc:
+            self.analysis_label.setText(f"分析配置错误：{exc}")
+
+    def _update_analysis(self):
+        self.analyze_button.setEnabled(
+            self.analysis.context is not None and self.analysis.available
+            and not self.analysis.busy and not self._closing)
+        self.cancel_analysis_button.setEnabled(self.analysis.busy and not self.analysis.cancelling)
+        if self._closing:
+            text = "正在等待分析任务安全退出…"
+        elif self.analysis.cancelling:
+            text = "正在取消，等待当前模块退出…"
+        elif self.analysis.busy:
+            text = "分析中…"
+        elif self.analysis.current_run:
+            text = {"success": "分析完成", "partial_success": "分析部分完成",
+                    "failed": "分析失败", "cancelled": "分析已取消"}.get(
+                        self.analysis.current_run.status, "分析中…")
+            failures = [f"{result.module_id}：{result.error.message}"
+                        for result in self.analysis.current_run.modules.values()
+                        if result.error and result.state == "failed"]
+            if failures:
+                text += "\n" + "\n".join(failures)
+        elif not self.analysis.available:
+            text = "分析模块未配置"
+        else:
+            text = "可以开始分析" if self.analysis.context else "请先导入图像"
+        self.analysis_label.setText(text)
+
+    def closeEvent(self, event):
+        if self.analysis.busy:
+            self._closing = True
+            self.import_button.setEnabled(False)
+            self.clear_button.setEnabled(False)
+            self.analysis.cancel()
+            event.ignore()
+        else:
+            event.accept()
+
+    def _analysis_idle(self):
+        if self._closing:
+            self.close()

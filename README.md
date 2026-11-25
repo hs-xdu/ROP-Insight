@@ -1,5 +1,15 @@
 # ROP-Insight
 
+P2-A 已实现后台任务基础，真实模型尚未接入。正常启动显示“分析模块未配置”；后台响应、取消和安全关闭可用测试专用窗口验收：
+
+```powershell
+.\.venv\Scripts\python.exe tests/manual_p2_a.py
+```
+
+详见 [P2-A 验收记录](docs/P2_A_VALIDATION.md)。该脚本只运行工程任务，不输出诊断结果。
+
+支持用 `python -m rop_insight --config 配置文件.json` 指定分析配置。配置顶层为 `schema_version: 1` 和 `modules` 列表；每项使用 `module_id`、`enabled`、`adapter_id`、`device`、`dependencies` 等字段。此阶段生产注册表为空，只能禁用或留空模型项；不能通过 JSON 加载任意 Python 代码。错误日志位于 Qt 的本地应用数据目录下 `ROP-Insight/logs/analysis.log`，失败提示不显示完整堆栈。
+
 Windows 本地眼底图像查看软件，采用 Python 3.12 + PyQt6。支持单张 JPG、JPEG、PNG 导入、重选、清除、等比例适应窗口、滚轮及按钮缩放、鼠标拖动，以及文件信息和加载状态展示。
 
 ## 安装与运行

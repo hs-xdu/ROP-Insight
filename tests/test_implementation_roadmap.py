@@ -20,7 +20,7 @@ class ImplementationRoadmapTests(unittest.TestCase):
 
     def test_stages_have_details_and_prior_dependencies(self):
         rows = re.findall(
-            r"^\| (P\d-[A-Z]) \| (V[\d.]+) \| (MVP|P\d-[A-Z]) \| [^|]+ \| 待实施 \|$",
+            r"^\| (P\d-[A-Z]) \| (V[\d.]+) \| (MVP|P\d-[A-Z]) \| [^|]+ \| [^|]+ \|$",
             self.text, re.MULTILINE,
         )
         expected = ["P2-A", "P2-B", "P2-C", "P2-D", "P2-E", "P3-A", "P3-B", "P4-A", "P4-B"]
