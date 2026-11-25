@@ -1,5 +1,7 @@
 # ROP-Insight
 
+后续增量已规划、尚未实现：P5 结构化辅助分析报告（优先）、P6 简化病例信息（建议）、P7 历史记录与复核（可选）。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
+
 完整研究平台入口：`.\run-platform.ps1`。导入原图和已有 Ridge Mask，开始分析，结束后可“导出分析结果”，生成独立目录中的 JSON、二值 Mask PNG 和原图坐标叠加图。
 
 启动、自检、配置与复现见 [运行手册](docs/RUNBOOK.md)；导出字段见 [P4-A](docs/P4_A.md)，系统自审与剩余限制见 [P4-B](docs/P4_B_VALIDATION.md)，论文材料见 [索引](docs/THESIS_MATERIALS.md)。当前为手动 Ridge 的研究原型，自动 Ridge 仍暂缓。
