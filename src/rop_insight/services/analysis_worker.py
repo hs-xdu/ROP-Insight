@@ -6,7 +6,7 @@ from time import monotonic
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from rop_insight.inference.base import validate_output
+from rop_insight.inference.base import validate_output, AdapterError
 from rop_insight.models.analysis_result import ModuleError, ModuleResult, ModuleState
 
 logger = logging.getLogger("rop_insight.analysis")
@@ -62,7 +62,8 @@ class AnalysisWorker(QObject):
                         logger.exception("Analysis module %s failed in run %s", config.module_id, self.run_id)
                         result.state = ModuleState.FAILED
                         code = "model_missing" if isinstance(exc, FileNotFoundError) else "execution_failed"
-                        result.error = ModuleError(code, "模型文件缺失" if code == "model_missing" else "模块执行失败，请检查配置和本地日志")
+                        result.error = (ModuleError(exc.code, str(exc)) if isinstance(exc, AdapterError) else
+                                        ModuleError(code, "模型文件缺失" if code == "model_missing" else "模块执行失败，请检查配置和本地日志"))
                 result.elapsed_seconds = monotonic() - started
                 completed[config.module_id] = deepcopy(result)
                 self._emit(result)

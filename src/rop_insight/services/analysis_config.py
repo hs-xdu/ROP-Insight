@@ -17,6 +17,8 @@ class ModuleConfig:
     model_version: str | None = None
     weights_path: str | None = None
     device: str | None = None
+    runtime_python: str | None = None
+    weights_sha256: str | None = None
     dependencies: tuple[str, ...] = ()
     preprocessing: dict = field(default_factory=dict)
     postprocessing: dict = field(default_factory=dict)
@@ -49,9 +51,13 @@ def parse_config(data, registry, base_dir=Path.cwd()):
             raise ConfigError("module_id 必须是非空字符串")
         if type(item.get("enabled", False)) is not bool:
             raise ConfigError("enabled 必须是布尔值")
-        for key in ("adapter_id", "model_version", "weights_path", "device"):
+        for key in ("adapter_id", "model_version", "weights_path", "device", "runtime_python", "weights_sha256"):
             if item.get(key) is not None and (not isinstance(item[key], str) or not item[key].strip()):
                 raise ConfigError(f"{key} 必须是非空字符串或 null")
+        if item.get("weights_sha256") is not None:
+            import re
+            if not re.fullmatch(r"[0-9a-f]{64}", item["weights_sha256"]):
+                raise ConfigError("weights_sha256 必须是小写 SHA-256")
         deps = item.get("dependencies", [])
         if not isinstance(deps, list) or any(not isinstance(dep, str) for dep in deps):
             raise ConfigError("dependencies 必须是字符串列表")
@@ -69,9 +75,10 @@ def parse_config(data, registry, base_dir=Path.cwd()):
             if item.get("device") not in registry[adapter].supported_devices:
                 raise ConfigError(f"{identifier} 的设备不受适配器支持")
         values = dict(item, dependencies=tuple(deps))
-        if values.get("weights_path"):
-            path = Path(values["weights_path"])
-            values["weights_path"] = str((Path(base_dir) / path).resolve())
+        for field_name in ("weights_path", "runtime_python"):
+            if values.get(field_name):
+                path = Path(values[field_name])
+                values[field_name] = str((Path(base_dir) / path).resolve())
         modules.append(ModuleConfig(**values))
     config = AnalysisConfig(tuple(modules))
     ordered_modules(config)

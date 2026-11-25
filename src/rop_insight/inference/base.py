@@ -7,6 +7,13 @@ from typing import Protocol
 from rop_insight.models.analysis_result import AnalysisOutput, MaskData, ClassificationData
 
 
+class AdapterError(RuntimeError):
+    """An explicitly safe error code and message for the GUI."""
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+
+
 class AnalysisAdapter(Protocol):
     supported_devices: tuple[str, ...]
 

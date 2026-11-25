@@ -108,7 +108,8 @@ class AnalysisController(QObject):
                     result.state = ModuleState.CANCELLED if self._cancel.is_set() else ModuleState.FAILED
                     result.error = ModuleError("cancelled" if self._cancel.is_set() else "worker_failed",
                                                "任务已取消" if self._cancel.is_set() else "任务意外结束")
-            states = [r.state for r in run.modules.values()]
+            # Intentionally disabled modules do not turn a successful Vessel run partial.
+            states = [run.modules[m.module_id].state for m in run.config.modules if m.enabled]
             run.status = ("cancelled" if self._cancel.is_set() else
                           "success" if all(s == ModuleState.SUCCESS for s in states) else
                           "partial_success" if ModuleState.SUCCESS in states else "failed")

@@ -121,6 +121,16 @@ def test_upstream_outputs_and_signal_snapshots_are_independent(qtbot, harness):
     assert len(run.modules) == 2
 
 
+def test_disabled_modules_do_not_make_success_partial(qtbot, harness):
+    specs = [{"module_id": "ridge"}, {"module_id": "vessel", "enabled": True,
+             "adapter_id": "test", "device": "cpu"}, {"module_id": "staging"}]
+    controller, _, _, _ = harness(specs=specs)
+    assert controller.start()
+    run = wait_finished(qtbot, controller)
+    assert run.status == "success"
+    assert run.modules["ridge"].state == ModuleState.SKIPPED
+
+
 def test_image_context_is_a_pixel_snapshot(qtbot, harness, image_file):
     from PyQt6.QtGui import QColor
     controller, _, _, _ = harness()

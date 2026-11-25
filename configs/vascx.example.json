@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {"module_id": "ridge", "enabled": false},
+    {
+      "module_id": "vessel",
+      "enabled": true,
+      "adapter_id": "vascx_native",
+      "model_version": "vessels_july24_native_reference_refresh",
+      "weights_path": "E:/path/to/vessels_july24.pt",
+      "weights_sha256": "bdabae77502648acd1c176bff6d5e3c8295da60f18f2f84fe1bcd6181d2b2ca4",
+      "runtime_python": "E:/path/to/original/runtime_t02/.venv/Scripts/python.exe",
+      "device": "cuda:0",
+      "dependencies": []
+    },
+    {"module_id": "staging", "enabled": false}
+  ]
+}

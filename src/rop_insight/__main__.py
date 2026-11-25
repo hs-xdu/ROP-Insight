@@ -13,6 +13,7 @@ from rop_insight.services.analysis_config import load_config, ConfigError
 from rop_insight.services.analysis_controller import AnalysisController
 from PyQt6.QtCore import QStandardPaths
 from PyQt6.QtWidgets import QMessageBox
+from rop_insight.inference.vascx import VascXAdapter
 
 
 def main():
@@ -32,7 +33,9 @@ def main():
     except OSError:
         logging.basicConfig(level=logging.INFO)
     try:
-        controller = AnalysisController(config=load_config(args.config, {}) if args.config else None)
+        registry = {"vascx_native": VascXAdapter}
+        controller = AnalysisController(config=load_config(args.config, registry) if args.config else None,
+                                        registry=registry)
     except ConfigError as exc:
         QMessageBox.critical(None, "分析配置错误", str(exc))
         return 1
