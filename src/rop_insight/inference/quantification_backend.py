@@ -80,6 +80,23 @@ def run(request):
     result = namespace["extract"](row)
     if result["status"] != "ok":
         raise RuntimeError("原特征提取失败：" + result.get("error", "unknown"))
+    # Replay the same frozen posterior; expose its interval without fitting anything.
+    state = json.loads((archive / "selected_model/full26.json").read_text())
+    posterior = archive / "selected_model/full26_posterior.npz"
+    if digest(posterior) != state["posterior_sha256"]:
+        raise ValueError("评分后验哈希不一致")
+    score = {"status": "unavailable", "reason": "原评分质量规则未通过（至少5条有效血管段且特征有限）",
+             "median": None, "lower": None, "upper": None, "ci95_width": None,
+             "valid_segments": int(result["T_segments"]), "posterior_sha256": state["posterior_sha256"]}
+    if result["score_qc_pass"]:
+        with np.load(posterior) as samples:
+            x = np.array([result[name] for name in ("L3", "B3", "T1", "T3")])
+            draws = ((x - state["mean"]) / state["std"]) @ samples["w"].reshape(-1, 4).T + samples["b"].reshape(-1)
+        lower, median, upper = np.quantile(draws, [.025, .5, .975])
+        if not np.isfinite([lower, median, upper]).all() or float(median) != result["S_median"]:
+            raise ValueError("连续评分与原提取结果不一致")
+        score.update(status="available", reason=None, median=float(median), lower=float(lower),
+                     upper=float(upper), ci95_width=float(upper-lower))
     units = {name: "无量纲" for name in FEATURES}
     units.update(T3="model_px^-1", B3="count/model_px²", S_median="原后验相对评分")
     metrics = {}
@@ -90,7 +107,10 @@ def run(request):
                          "status": "available" if valid else "unavailable",
                          "reason": None if valid else ("Ridge 为空或几何退化" if name.startswith("ridge") else "原实验质量规则未通过或指标不可定义"),
                          "grid": 1024 if name in ("T3", "B3", "S_median") else 512}
-    (out / "result.json").write_text(json.dumps({"metrics": metrics, "source_hashes": request["source_hashes"],
+    feature_values = {name: float(value) if value is not None and np.isfinite(value) else None
+                      for name in (*FEATURES, "T1") for value in [result.get(name)]}
+    (out / "result.json").write_text(json.dumps({"metrics": metrics, "score": score,
+         "feature_values": feature_values, "source_hashes": request["source_hashes"],
          "posterior_config_sha256": request["weights_sha256"], "geometry_512": json.loads(transform.to_json()),
          "text_exclusion": "zero mask as original Shenzhen protocol"}, ensure_ascii=False,allow_nan=False,indent=2),encoding="utf-8")
 

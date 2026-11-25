@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "modules": [
+    {
+      "module_id": "ridge",
+      "enabled": true,
+      "adapter_id": "imported_ridge",
+      "device": "cpu",
+      "model_version": "user_imported"
+    },
+    {
+      "module_id": "vessel",
+      "enabled": true,
+      "adapter_id": "vascx_native",
+      "model_version": "vessels_july24_native_reference_refresh",
+      "weights_path": "E:/path/to/vessels_july24.pt",
+      "weights_sha256": "bdabae77502648acd1c176bff6d5e3c8295da60f18f2f84fe1bcd6181d2b2ca4",
+      "runtime_python": "E:/path/to/python.exe",
+      "device": "cuda:0",
+      "dependencies": []
+    },
+    {
+      "weights_path": "E:/path/to/best.pt",
+      "weights_sha256": "46d32c4991e304b0a4058bf013847635695e884e7c435552869effe20d241f45",
+      "model_version": "A6_shenzhen_v2_seed42",
+      "model_source": "E:/path/to/a567_rgb_qkv_seed42_20261112_v1",
+      "source_hashes": {
+        "models.py": "a67d92836bd2763286c8a94485737c7156a4d84e27ca4e28f263a011be572f29",
+        "source_snapshot/cross_attention_study/model.py": "d7ea56be36613c029a30c3feaef8d12b69095faccfdb542f4800ef6d3be8eab3"
+      },
+      "device": "cuda:0",
+      "module_id": "staging",
+      "enabled": true,
+      "adapter_id": "a6_shenzhen",
+      "runtime_python": "E:/path/to/python.exe",
+      "dependencies": [
+        "ridge",
+        "vessel"
+      ]
+    },
+    {
+      "module_id": "quantification",
+      "enabled": true,
+      "adapter_id": "chapter5_quant",
+      "device": "cpu",
+      "dependencies": [
+        "ridge",
+        "vessel"
+      ],
+      "model_version": "chapter5_native_frozen",
+      "runtime_python": "E:/path/to/python.exe",
+      "model_source": "E:/path/to/features_quant",
+      "source_hashes": {
+        "fusion_stage34/prepare.py": "d8a33379f59f51fd0630ae64939981a5177210b6c4b3f1edcd8882a3101f6457",
+        "common/spatial.py": "9c161600bf0495ee778e34725880d4ec083ed340ee77f232a8aba6fb78266fe6",
+        "phase1_preprocess/preprocess_512.py": "26378eed26386afbaac2220b0f55a61274103e859352ecef88c12fa22970d38f",
+        "phase2_features/automorph_metrics.py": "e3057053fe8534c89ca2383416ccc5ccf389635b29c6a4b0bc75c4d6448fe9da",
+        "phase2_features/ridge_annot_metrics.py": "00218b151144b622c1840dd50a24030d8010f131a2c4a926fa0dbab3ebe330df",
+        "phase2_features/ridge_metrics.py": "7680b14b37b87269d6b603d220a2a0bf3fdadf7dcfbea39f9e1c46fc1347435d",
+        "E:\\ROP_Experiments\\icrop3_vascular_quant_v1\\A1_Bayesian_ReferenceRefresh_20261102_191829\\a1_vascular_severity\\v3b_extract.py": "f4e5b06ee8a0253e8fe0b137c75df3a7d0a35864898d28cabd1fb6fd623ad568",
+        "E:\\ROP_Experiments\\icrop3_vascular_quant_v1\\A1_Bayesian_ReferenceRefresh_20261102_191829\\a1_vascular_severity\\a1_v2_stage1.py": "822bfb970a177b1d26e679c372f6a6038f35cf861389d48a6bb44c00dde62d6a"
+      },
+      "weights_path": "E:/path/to/full26.json",
+      "weights_sha256": "6d29d36d878eb485c76e29f300cd79fc5b9442ef845ce69bdfe1df1da4f38d9b"
+    },
+    {
+      "module_id": "auxiliary",
+      "enabled": true,
+      "adapter_id": "chapter5_svm",
+      "device": "cpu",
+      "dependencies": [
+        "quantification"
+      ],
+      "model_version": "V6_R4_S1_RBF_SVM_results_v2",
+      "runtime_python": "E:/path/to/python.exe",
+      "model_source": "E:/path/to/results_v2",
+      "weights_path": "E:/path/to/results_v2/RBF_SVM.joblib",
+      "weights_sha256": "d474cc1394c30d410de36eac0307393eb28e71f4f28297c6659542f176abc7eb",
+      "source_hashes": {
+        "RBF_SVM_final_lock.json": "f49e69a101cfe5a10fa4ced1005d63091773efd25711c3082e620dcc64799971",
+        "protocol_lock.json": "782bbbbaea2cab8c25069dd84248b3733e27b210ed9aef113b769ae12a7c805e",
+        "experiment_summary.json": "296c59d92ff8e47cf1a6b979510bfd4f3996e73c1d5fadbea22b9b79b5d67bea"
+      }
+    }
+  ]
+}

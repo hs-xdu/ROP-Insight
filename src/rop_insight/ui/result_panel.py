@@ -54,6 +54,13 @@ class ResultPanel(QWidget):
         self.metrics_label.setWordWrap(True)
         self.metrics_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(self.metrics_label)
+        self.score_label = QLabel()
+        self.auxiliary_label = QLabel()
+        for label in (self.score_label, self.auxiliary_label):
+            label.setTextFormat(Qt.TextFormat.PlainText)
+            label.setWordWrap(True)
+            label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+            layout.addWidget(label)
         self.prediction = QLabel()
         layout.addWidget(self.prediction)
         self.bars = []
@@ -70,6 +77,8 @@ class ResultPanel(QWidget):
         self.layers_changed.emit()
 
     def reset(self):
+        self.score_label.setText("连续严重程度评分：未提供")
+        self.auxiliary_label.setText("RBF-SVM 辅助分类：未提供")
         self.metrics_label.setText("量化指标：未提供")
         self.status.setText("暂无分析结果")
         self.prediction.setText("分期：未提供")
@@ -91,7 +100,20 @@ class ResultPanel(QWidget):
             self.mode.setCurrentIndex(0)
 
     def show_run(self, run):
+        self.score_label.setText("连续严重程度评分：未提供")
+        self.auxiliary_label.setText("RBF-SVM 辅助分类：未提供")
         for result in run.modules.values():
+            if result.state == "success" and result.output:
+                score = result.output.values.get('score')
+                if score:
+                    self.score_label.setText(
+                        f"连续严重程度评分：{score['median']:.6g}\n95%后验区间：[{score['lower']:.6g}, {score['upper']:.6g}]\n原后验相对评分，不对应临床分期"
+                        if score['status'] == 'available' else f"连续严重程度评分：不可用 · {score['reason']}")
+                auxiliary = result.output.values.get('auxiliary_classification')
+                if auxiliary:
+                    self.auxiliary_label.setText(
+                        f"RBF-SVM 辅助分类：{auxiliary['prediction']}\n未校准概率；与 A6 独立展示"
+                        if auxiliary['status'] == 'available' else f"RBF-SVM 辅助分类：不可用 · {auxiliary['reason']}")
             if result.state == "success" and result.output and "metrics" in result.output.values:
                 self.metrics_label.setText("结构量化\n" + "\n".join(
                     f"{METRIC_NAMES.get(name,name)}：{metric['value']:.6g} {metric['unit']}（{metric['grid']}网格）" if metric['value'] is not None
@@ -106,7 +128,7 @@ class ResultPanel(QWidget):
                            if r.state == "success" and r.output and r.output.classification is not None]
         if len(classifications) == 1:
             values = classifications[0].probabilities
-            self.prediction.setText("预测：" + CLASSES[max(range(4), key=lambda i: values[i])])
+            self.prediction.setText("A6 预测：" + CLASSES[max(range(4), key=lambda i: values[i])])
             for bar, value in zip(self.bars, values):
                 bar.setEnabled(True)
                 bar.setValue(round(value * 1000))

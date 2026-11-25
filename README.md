@@ -1,5 +1,7 @@
 # ROP-Insight
 
+P3-B 评分与辅助分类入口：`.\run-scoring.ps1`。导入原图及 Ridge 后开始分析，向下滚动左侧结果，可分别查看连续评分/95% 后验区间、RBF-SVM 类别及 A6 概率。原冻结 SVM 使用含 T1 的 11 项特征，说明与验收见 [P3-B 记录](docs/P3_B.md)。
+
 结构量化入口：`run-quantification.ps1`。导入原图及 Ridge Mask 后，运行真实血管分割、A6 分类和原实验十项量化；说明与验收见 [P3-A 记录](docs/P3_A.md)。
 
 已按用户选择接入 A6 深圳权重，采用用户导入 Ridge Mask＋真实 VascX Vessel 的分类流程：

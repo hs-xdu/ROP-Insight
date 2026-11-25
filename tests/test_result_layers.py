@@ -121,7 +121,7 @@ def test_results_flow_from_worker_and_clear_on_new_image(qtbot, image_file):
     qtbot.waitUntil(lambda: not controller.busy)
     stale = deepcopy(controller.current_run)
     panel = window.result_panel
-    assert panel.prediction.text() == "预测：Stage 2"
+    assert panel.prediction.text() == "A6 预测：Stage 2"
     assert [bar.format() for bar in panel.bars] == ["10.0%", "20.0%", "60.0%", "10.0%"]
     assert set(window.view.mask_items) == {"ridge", "vessel"}
     panel.mode.setCurrentIndex(3)

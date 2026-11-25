@@ -39,5 +39,34 @@ class QuantificationAdapter(A6Adapter):
                     raise ValueError("缺失指标必须记录不可用原因")
             elif type(value) not in (float, int) or not math.isfinite(value) or metric.get("status") != "available":
                 raise ValueError("量化指标数值无效")
+        if "score" in data:
+            validate_score(data["score"])
+            values = data.get('feature_values')
+            if not isinstance(values, dict) or set(values) != {*FEATURES, 'T1'}:
+                raise ValueError('量化结果缺少冻结模型特征')
+            if any(value is not None and (type(value) not in (int, float) or not math.isfinite(value))
+                   for value in values.values()):
+                raise ValueError('冻结模型特征数值无效')
+            if any(values[name] != metrics[name]['value'] for name in FEATURES):
+                raise ValueError('冻结模型特征与量化显示不一致')
+            if values['S_median'] != data['score']['median']:
+                raise ValueError('评分与模型输入不一致')
         data["artifacts_dir"] = str(folder)
         return AnalysisOutput(data)
+
+
+def validate_score(score):
+    if not isinstance(score, dict):
+        raise ValueError("连续评分格式无效")
+    fields = ("lower", "median", "upper", "ci95_width")
+    if score.get("status") == "unavailable":
+        if not score.get("reason") or any(score.get(key) is not None for key in fields):
+            raise ValueError("不可用评分必须为空并说明原因")
+    elif score.get("status") == "available":
+        if any(type(score.get(key)) not in (float, int) or not math.isfinite(score[key]) for key in fields):
+            raise ValueError("连续评分数值无效")
+        if not score['lower'] <= score['median'] <= score['upper'] or not math.isclose(
+                score['ci95_width'], score['upper']-score['lower'], rel_tol=1e-9, abs_tol=1e-12):
+            raise ValueError("连续评分区间无效")
+    else:
+        raise ValueError("连续评分状态无效")
