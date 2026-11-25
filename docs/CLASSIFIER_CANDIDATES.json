@@ -1,0 +1,224 @@
+{
+  "status": "awaiting_user_selection",
+  "classes": [
+    "Normal",
+    "Stage1",
+    "Stage2",
+    "Stage3"
+  ],
+  "candidates": [
+    {
+      "id": "A0",
+      "inputs": [
+        "rgb",
+        "ridge",
+        "vessel"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_v2",
+          "test_n": 112,
+          "accuracy": 0.8214285714285714,
+          "macro_f1": 0.7990278391515687,
+          "metrics_source": "E:\\ROP_Experiments\\a_group_seed42_fixed_test_20261110_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "5faa9156e74637af550b37ddf025a0214b492e10d3179b5099dafb0abb0bee38",
+          "checkpoint": "E:\\ROP_Experiments\\ROP_Paper_Materials_20261020\\cross_attention_study\\runs\\shenzhen_fusion_v2\\A0\\seed_42\\best.pt",
+          "checkpoint_bytes": 117926286
+        },
+        {
+          "cohort": "xijing_latest",
+          "test_n": 80,
+          "accuracy": 0.8125,
+          "macro_f1": 0.7468998015873016,
+          "metrics_source": "E:\\ROP_Experiments\\a_group_seed42_fixed_test_20261110_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "5faa9156e74637af550b37ddf025a0214b492e10d3179b5099dafb0abb0bee38",
+          "checkpoint": "E:\\ROP_Experiments\\ROP_Paper_Materials_20261020\\cross_attention_study\\runs\\xijing_multiview_fusion_v1\\A0\\seed_42\\best.pt",
+          "checkpoint_bytes": 117926542
+        }
+      ]
+    },
+    {
+      "id": "A2",
+      "inputs": [
+        "rgb",
+        "ridge",
+        "vessel"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_v2",
+          "test_n": 112,
+          "accuracy": 0.8839285714285714,
+          "macro_f1": 0.8576741749607124,
+          "metrics_source": "E:\\ROP_Experiments\\a_group_seed42_fixed_test_20261110_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "5faa9156e74637af550b37ddf025a0214b492e10d3179b5099dafb0abb0bee38",
+          "checkpoint": "E:\\ROP_Experiments\\ROP_Paper_Materials_20261020\\cross_attention_study\\runs\\shenzhen_fusion_v2\\A2\\seed_42\\best.pt",
+          "checkpoint_bytes": 118988089
+        },
+        {
+          "cohort": "xijing_latest",
+          "test_n": 80,
+          "accuracy": 0.7125,
+          "macro_f1": 0.6261904761904762,
+          "metrics_source": "E:\\ROP_Experiments\\a_group_seed42_fixed_test_20261110_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "5faa9156e74637af550b37ddf025a0214b492e10d3179b5099dafb0abb0bee38",
+          "checkpoint": "E:\\ROP_Experiments\\ROP_Paper_Materials_20261020\\cross_attention_study\\runs\\xijing_multiview_fusion_v1\\A2\\seed_42\\best.pt",
+          "checkpoint_bytes": 118988345
+        }
+      ]
+    },
+    {
+      "id": "A6",
+      "inputs": [
+        "rgb",
+        "ridge",
+        "vessel"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_v2",
+          "test_n": 112,
+          "accuracy": 0.875,
+          "macro_f1": 0.8497564000354327,
+          "metrics_source": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "add53a840a2eb736986e0a87c9cb6380106b606b446751aa2501db9a447d9380",
+          "checkpoint": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\runs\\shenzhen_v2\\A6\\seed_42\\best.pt",
+          "checkpoint_bytes": 149853329
+        },
+        {
+          "cohort": "xijing_latest",
+          "test_n": 80,
+          "accuracy": 0.7375,
+          "macro_f1": 0.6927647986970021,
+          "metrics_source": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "add53a840a2eb736986e0a87c9cb6380106b606b446751aa2501db9a447d9380",
+          "checkpoint": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\runs\\xijing_latest\\A6\\seed_42\\best.pt",
+          "checkpoint_bytes": 149853521
+        }
+      ]
+    },
+    {
+      "id": "A7",
+      "inputs": [
+        "rgb",
+        "ridge",
+        "vessel"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_v2",
+          "test_n": 112,
+          "accuracy": 0.875,
+          "macro_f1": 0.833939393939394,
+          "metrics_source": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "add53a840a2eb736986e0a87c9cb6380106b606b446751aa2501db9a447d9380",
+          "checkpoint": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\runs\\shenzhen_v2\\A7\\seed_42\\best.pt",
+          "checkpoint_bytes": 149853329
+        },
+        {
+          "cohort": "xijing_latest",
+          "test_n": 80,
+          "accuracy": 0.775,
+          "macro_f1": 0.7108873555840822,
+          "metrics_source": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\test_results_seed42.csv",
+          "metrics_source_sha256": "add53a840a2eb736986e0a87c9cb6380106b606b446751aa2501db9a447d9380",
+          "checkpoint": "E:\\ROP_Experiments\\a567_rgb_qkv_seed42_20261112_v1\\runs\\xijing_latest\\A7\\seed_42\\best.pt",
+          "checkpoint_bytes": 149853521
+        }
+      ]
+    },
+    {
+      "id": "M2",
+      "inputs": [
+        "rgb"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_pyramid_original",
+          "test_n": 112,
+          "accuracy": 0.8660714285714286,
+          "macro_f1": 0.832950298457233,
+          "metrics_source": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\test_results\\shenzhen\\summary.json",
+          "metrics_source_sha256": "c7fe15815da5a908ae9ab34135f7ee92680c0c1394e49c10f28d6ff6f5fe0bad",
+          "checkpoint": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\runs\\shenzhen\\M2\\seed_42\\best.pt",
+          "checkpoint_bytes": 94358502
+        },
+        {
+          "cohort": "xijing_pyramid_original",
+          "test_n": 80,
+          "accuracy": 0.675,
+          "macro_f1": 0.5839285714285715,
+          "metrics_source": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\test_results\\xijing\\summary.json",
+          "metrics_source_sha256": "77f0d6bbf71669819594c488059c65ff3b26c8a706f414fbb41315177feef186",
+          "checkpoint": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\runs\\xijing\\M2\\seed_42\\best.pt",
+          "checkpoint_bytes": 94358502
+        }
+      ]
+    },
+    {
+      "id": "M3",
+      "inputs": [
+        "rgb"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_pyramid_original",
+          "test_n": 112,
+          "accuracy": 0.8125,
+          "macro_f1": 0.7488733212281821,
+          "metrics_source": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\test_results\\shenzhen\\summary.json",
+          "metrics_source_sha256": "c7fe15815da5a908ae9ab34135f7ee92680c0c1394e49c10f28d6ff6f5fe0bad",
+          "checkpoint": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\runs\\shenzhen\\M3\\seed_42\\best.pt",
+          "checkpoint_bytes": 95409042
+        },
+        {
+          "cohort": "xijing_pyramid_original",
+          "test_n": 80,
+          "accuracy": 0.675,
+          "macro_f1": 0.6053871459138217,
+          "metrics_source": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\test_results\\xijing\\summary.json",
+          "metrics_source_sha256": "77f0d6bbf71669819594c488059c65ff3b26c8a706f414fbb41315177feef186",
+          "checkpoint": "E:\\ROP_Experiments\\rgb_pyramid_latest_seed42_20261111_v1\\runs\\xijing\\M3\\seed_42\\best.pt",
+          "checkpoint_bytes": 95409042
+        }
+      ]
+    },
+    {
+      "id": "B2",
+      "inputs": [
+        "rgb",
+        "ridge",
+        "vessel"
+      ],
+      "seed": 42,
+      "metrics": [
+        {
+          "cohort": "shenzhen_pathology",
+          "test_n": 156,
+          "accuracy": 0.8782051282051282,
+          "macro_f1": 0.8781123939351787,
+          "metrics_source": "E:\\ROP_Experiments\\pathology_aware_resnet50_seed42_formal_v1\\results.csv",
+          "metrics_source_sha256": "e85f17990ed9cb70d3a9049bb6dddb6a1e31ffee70e4f0047ed37bb70528d8f2",
+          "checkpoint": "E:\\ROP_Experiments\\pathology_aware_resnet50_seed42_formal_v1\\runs\\shenzhen_B2_lesion_pool_seed42\\best.pt",
+          "checkpoint_bytes": 198677916
+        },
+        {
+          "cohort": "xijing_pathology",
+          "test_n": 80,
+          "accuracy": 0.6875,
+          "macro_f1": 0.6479120319456453,
+          "metrics_source": "E:\\ROP_Experiments\\pathology_aware_resnet50_seed42_formal_v1\\results.csv",
+          "metrics_source_sha256": "e85f17990ed9cb70d3a9049bb6dddb6a1e31ffee70e4f0047ed37bb70528d8f2",
+          "checkpoint": "E:\\ROP_Experiments\\pathology_aware_resnet50_seed42_formal_v1\\runs\\xijing_B2_lesion_pool_seed42\\best.pt",
+          "checkpoint_bytes": 198677852
+        }
+      ]
+    }
+  ]
+}
