@@ -22,6 +22,7 @@ from rop_insight.services.report_builder import build_report
 from rop_insight.services.report_exporter import export_report_bundle
 from rop_insight.ui.report_dialog import ReportDialog
 from rop_insight.ui.case_selector import CaseSelector
+from rop_insight.ui.record_history import HistoryWindow
 from rop_insight.services.local_records import record_job
 from copy import deepcopy
 
@@ -46,6 +47,7 @@ class MainWindow(QMainWindow):
         self.library_root = None
         self.current_case = None
         self.case_dialog = None
+        self.history_dialog = None
         self.run_cases = {}
         self.records_worker = ExportController(self,job=record_job)
         self.records_worker.changed.connect(self._update_analysis)
@@ -117,6 +119,9 @@ class MainWindow(QMainWindow):
         self.save_record_button = QPushButton("保存分析记录")
         self.save_record_button.clicked.connect(self.save_record)
         side.addWidget(self.save_record_button)
+        self.history_button = QPushButton("历史分析记录")
+        self.history_button.clicked.connect(self.open_history)
+        side.addWidget(self.history_button)
         side.addWidget(self.analysis_label)
         self.analyze_button.clicked.connect(self.start_analysis)
         self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
@@ -346,7 +351,16 @@ class MainWindow(QMainWindow):
         return True
 
     def _records_busy(self):
-        return self.records_worker.busy or (self.case_dialog is not None and self.case_dialog.worker.busy)
+        return self.records_worker.busy or (self.case_dialog is not None and self.case_dialog.worker.busy) or (self.history_dialog is not None and self.history_dialog.worker.busy)
+
+    def open_history(self):
+        if self._closing:return None
+        if self.history_dialog is None:
+            self.history_dialog=HistoryWindow(self.library_root,self)
+            self.history_dialog.worker.finished.connect(lambda *_:self._analysis_idle())
+        self.history_dialog._closing=False
+        self.history_dialog.show();self.history_dialog.raise_()
+        return self.history_dialog
 
     def choose_case(self):
         if self.analysis.busy or self._records_busy() or self._closing:return None
@@ -393,6 +407,7 @@ class MainWindow(QMainWindow):
     def _update_analysis(self):
         run = self.analysis.current_run
         busy=self._records_busy()
+        self.history_button.setEnabled(not self._closing)
         self.case_button.setEnabled(not self.analysis.busy and not busy and not self._closing)
         self.case_label.setText(f"当前病例：{self.current_case['case_code']} · "+{'left':'左眼','right':'右眼','unspecified':'未指定'}[self.current_case['eye']] if self.current_case else "临时分析 · 未选择病例")
         if self.current_case:self.case_label.setText(self.case_label.text()+' · '+(self.current_case['exam_date'] or '日期未填写'))
@@ -479,9 +494,11 @@ class MainWindow(QMainWindow):
             self.export_button.setEnabled(False)
             self._update_analysis()
             self.analysis.cancel()
+            if self.history_dialog is not None:self.history_dialog.close()
             event.ignore()
         else:
             if self.case_dialog is not None:self.case_dialog.close()
+            if self.history_dialog is not None:self.history_dialog.close()
             event.accept()
 
     def _analysis_idle(self):

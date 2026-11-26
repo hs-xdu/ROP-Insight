@@ -19,13 +19,15 @@ from rop_insight.services.image_loader import ImageLoader
 _SAVE_LOCK=Lock()
 
 
-def _hash(path):
+def _hash(path,cancel=None):
     for part in (path,*path.parents):
         if part.is_symlink() or part.is_junction() or (part.exists() and getattr(part.lstat(),'st_file_attributes',0)&0x400):raise ValueError('文件不能使用链接')
     if path.stat().st_size>256*1024*1024:raise ValueError('文件超过256MiB上限')
     sha=hashlib.sha256()
     with path.open('rb') as stream:
-        while chunk:=stream.read(1024*1024):sha.update(chunk)
+        while chunk:=stream.read(1024*1024):
+            if cancel is not None and cancel.is_set():raise InterruptedError('读取已取消')
+            sha.update(chunk)
     return sha.hexdigest()
 
 
@@ -39,8 +41,8 @@ def _safe(root,relative):
 
 
 def _json(path):
-    _hash(path)
     if path.stat().st_size>4*1024*1024:raise ValueError('JSON文件过大')
+    _hash(path)
     return json.loads(path.read_text(encoding='utf-8'),parse_constant=lambda value:(_ for _ in ()).throw(ValueError('非法JSON数值')))
 
 
@@ -50,10 +52,11 @@ def _write(path,value):
 
 
 class LocalRecords:
-    def __init__(self,root):
+    def __init__(self,root,*,create=True):
         self.root=Path(root).absolute()
         path=_safe(self.root,'rop_insight.db')
-        self.root.mkdir(parents=True,exist_ok=True)
+        if not create and not path.is_file():raise ValueError('此目录没有精简版资料库，请选择保存记录时的同一目录')
+        if create:self.root.mkdir(parents=True,exist_ok=True)
         if (self.root/'catalog.sqlite3').exists():raise ValueError('这是旧五表资料库，请选择新的精简版目录')
         if not path.exists():
             records=_safe(self.root,'records')
@@ -61,10 +64,10 @@ class LocalRecords:
             try:
                 with path.open('xb'):pass
             except FileExistsError:pass
-        with self._db(True) as db:
+        with self._db(create) as db:
             version=db.execute('PRAGMA user_version').fetchone()[0]
             tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-            if version==0 and not tables:
+            if create and version==0 and not tables:
                 db.execute('''CREATE TABLE cases(case_id TEXT PRIMARY KEY NOT NULL,case_code TEXT NOT NULL,
                     code_key TEXT NOT NULL UNIQUE,eye TEXT NOT NULL CHECK(eye IN ('left','right','unspecified')),
                     exam_date TEXT,created_at TEXT NOT NULL)''')
@@ -78,7 +81,7 @@ class LocalRecords:
             for table,columns in expected.items():
                 if {row[1] for row in db.execute(f'PRAGMA table_info({table})')}!=columns:raise ValueError('资料库结构不兼容')
             if list(db.execute('PRAGMA foreign_key_check')) or db.execute('PRAGMA quick_check').fetchone()[0]!='ok':raise ValueError('资料库检查失败')
-        _safe(self.root,'records').mkdir(exist_ok=True)
+        if create:_safe(self.root,'records').mkdir(exist_ok=True)
 
     @contextmanager
     def _db(self,write=False):
@@ -114,32 +117,32 @@ class LocalRecords:
             row=db.execute('SELECT * FROM analysis_records WHERE record_id=?',(record_id,)).fetchone()
             return dict(row) if row else None
 
-    def verify_record(self,record_id):
+    def verify_record(self,record_id,*,include_report=True,cancel=None):
         row=self.get_record(record_id)
         if row is None:raise ValueError('记录不存在')
         folder=_safe(self.root,f'records/{record_id}')
         manifest=folder/'record_manifest.json'
-        if _hash(manifest)!=row['manifest_sha256']:raise ValueError('记录清单损坏')
+        if _hash(manifest,cancel)!=row['manifest_sha256']:raise ValueError('记录清单损坏')
         data=_json(manifest)
         if type(data.get('schema_version')) is not int or data['schema_version']!=1:raise ValueError('记录清单版本不支持')
         if row['status']!=data['identity']['source']['run']['status']:raise ValueError('记录分析状态不匹配')
         if data['identity']['run_id']!=record_id or data['identity']['case']['case_id']!=row['case_id']:raise ValueError('记录身份不匹配')
         for name,sha in data['files'].items():
-            if _hash(_safe(folder,name))!=sha:raise ValueError('记录文件缺失或损坏：'+name)
+            if _hash(_safe(folder,name),cancel)!=sha:raise ValueError('记录文件缺失或损坏：'+name)
         if row['image_path']!=f'records/{record_id}/'+data['original'] or row['result_path']!=f'records/{record_id}/result.json':raise ValueError('记录路径关联错误')
-        if row['report_path']:
-            self._verify_report(_safe(self.root,row['report_path']).parent,row['report_sha256'],data['identity'])
+        if include_report and row['report_path']:
+            self._verify_report(_safe(self.root,row['report_path']).parent,row['report_sha256'],data['identity'],cancel)
         return row
 
-    def _verify_report(self,folder,expected,identity):
+    def _verify_report(self,folder,expected,identity,cancel=None):
         manifest=folder/'report_manifest.json'
-        if _hash(manifest)!=expected:raise ValueError('报告清单损坏')
+        if _hash(manifest,cancel)!=expected:raise ValueError('报告清单损坏')
         data=_json(manifest)
         if data['run_id']!=identity['run_id'] or data['image_id']!=identity['image_id']:raise ValueError('报告不属于此分析')
         expected=hashlib.sha256(json.dumps(identity['source'],ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
         if data['source_snapshot_sha256']!=expected or data['input_file_sha256']!=identity['source']['image']['file_sha256']:raise ValueError('报告来源摘要不一致')
         for name,info in data['artifacts'].items():
-            if _hash(_safe(folder,name))!=info['sha256']:raise ValueError('报告文件损坏')
+            if _hash(_safe(folder,name),cancel)!=info['sha256']:raise ValueError('报告文件损坏')
 
     def save_record(self,case,snapshot,report=None):
         snapshot=ExportSnapshot.capture(snapshot.context,snapshot.run)

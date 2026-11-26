@@ -9,7 +9,7 @@ def test_p5_analysis_and_reports_survive_simplified_case_entry(qtbot):
     assert hasattr(window,'analyze_button') and hasattr(window,'export_button')
     assert hasattr(window,'report_button')
     assert hasattr(window,'case_button') and hasattr(window,'save_record_button')
-    assert not hasattr(window,'history_button')
+    assert hasattr(window,'history_button')
     assert TEMPLATE_VERSION=='p5-factual-2'
     window.close()
 
