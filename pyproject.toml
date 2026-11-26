@@ -19,3 +19,6 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 qt_api = "pyqt6"
+
+[tool.setuptools.package-data]
+"rop_insight.migrations" = ["*.sql"]
