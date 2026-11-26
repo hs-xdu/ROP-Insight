@@ -40,6 +40,7 @@ def test_history_window_search_and_current_analysis_preserved(qtbot,saved_input)
     main.library_root=str(store.root);main.analysis.context=snapshot.context;main.analysis.current_run=snapshot.run
     window=main.open_history();qtbot.waitUntil(lambda:not window.worker.busy,timeout=5000)
     assert window.table.rowCount()==1
+    assert main.case_button.isEnabled()
     window.search.setText('not-found')
     qtbot.waitUntil(lambda:window.table.rowCount()==0 and '无匹配' in window.status.text(),timeout=5000)
     window.search.clear();qtbot.waitUntil(lambda:window.table.rowCount()==1,timeout=5000)

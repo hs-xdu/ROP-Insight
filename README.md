@@ -2,7 +2,7 @@
 
 以P5回退版本为基线实施新的 [P6/P7精简方案](docs/P6_P7_SIMPLIFIED.md)。旧复杂方案已停用，回退历史见 [记录](docs/P5_ROLLBACK.md)。
 
-P5 已实现：分析结束后点击“预览辅助分析报告”，查看简要/详细报告并“导出PDF报告”。输出PDF、精确JSON、文字及来源清单，使用与验证见 [P5说明](docs/P5.md)。精简P6-A/B已实现：在同一工作台点击“病例与资料库”，创建或选择病例，分析后点击“保存分析记录”；P7历史列表与恢复尚未开发。操作见 [精简版使用说明](docs/P6_SIMPLE_VALIDATION.md)。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
+P5 已实现：分析结束后点击“预览辅助分析报告”，查看简要/详细报告并“导出PDF报告”。输出PDF、精确JSON、文字及来源清单，使用与验证见 [P5说明](docs/P5.md)。精简P6-A/B已实现：在同一工作台点击“病例与资料库”，创建或选择病例，分析后点击“保存分析记录”；P7-A/B已实现：点击“历史分析记录”，搜索病例、打开原图/图层/分析结果，以及查看或另存已有报告。操作见 [精简版使用说明](docs/P6_SIMPLE_VALIDATION.md)。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
 
 完整研究平台入口：`.\run-platform.ps1`。导入原图和已有 Ridge Mask，开始分析，结束后可“导出分析结果”，生成独立目录中的 JSON、二值 Mask PNG 和原图坐标叠加图。
 
@@ -79,3 +79,5 @@ py -3.12 -m venv .venv
 自动化测试使用临时合成图片，不需要患者图像。无显示环境可设置 `QT_QPA_PLATFORM=offscreen`；Windows 桌面仍需检查实际布局和操作手感。
 
 需求见 [MVP 文档](docs/MVP.md)，实现方案见 [技术方案](docs/TECHNICAL_PLAN.md)。
+
+历史功能的简明验收见 [P7使用说明](docs/P7_SIMPLE_VALIDATION.md)。历史查看保持只读，不重新推理，不覆盖当前分析。

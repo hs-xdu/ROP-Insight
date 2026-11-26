@@ -3,7 +3,7 @@
 from enum import Enum
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QAction, QKeySequence
 from PyQt6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
@@ -357,8 +357,11 @@ class MainWindow(QMainWindow):
         if self._closing:return None
         if self.history_dialog is None:
             self.history_dialog=HistoryWindow(self.library_root,self)
-            self.history_dialog.worker.finished.connect(lambda *_:self._analysis_idle())
+            self.history_dialog.worker.finished.connect(self._records_idle)
+            self.history_dialog.worker.changed.connect(self._update_analysis)
         self.history_dialog._closing=False
+        if not self.history_dialog.worker.busy:self.history_dialog.refresh()
+        self._update_analysis()
         self.history_dialog.show();self.history_dialog.raise_()
         return self.history_dialog
 
@@ -368,7 +371,7 @@ class MainWindow(QMainWindow):
         self.case_dialog=CaseSelector(self.library_root,self.current_case,self)
         self.case_dialog.selected.connect(self.apply_case)
         self.case_dialog.worker.changed.connect(self._update_analysis)
-        self.case_dialog.worker.finished.connect(lambda *_:self._analysis_idle())
+        self.case_dialog.worker.finished.connect(self._records_idle)
         self.case_dialog.show()
         return self.case_dialog
 
@@ -500,6 +503,10 @@ class MainWindow(QMainWindow):
             if self.case_dialog is not None:self.case_dialog.close()
             if self.history_dialog is not None:self.history_dialog.close()
             event.accept()
+
+    @pyqtSlot(object,str)
+    def _records_idle(self,result,error):
+        self._analysis_idle()
 
     def _analysis_idle(self):
         if self._closing and not self.analysis.busy and not self.exporter.busy and not self.report_exporter.busy and not self._records_busy():
