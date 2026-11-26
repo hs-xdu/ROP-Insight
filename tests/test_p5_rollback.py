@@ -4,11 +4,12 @@ from rop_insight.ui.main_window import MainWindow
 from rop_insight.services.report_builder import TEMPLATE_VERSION
 
 
-def test_p5_workbench_keeps_analysis_and_reports_without_case_history_controls(qtbot):
+def test_p5_analysis_and_reports_survive_simplified_case_entry(qtbot):
     window=MainWindow();qtbot.addWidget(window)
     assert hasattr(window,'analyze_button') and hasattr(window,'export_button')
     assert hasattr(window,'report_button')
-    assert not hasattr(window,'case_button') and not hasattr(window,'history_button')
+    assert hasattr(window,'case_button') and hasattr(window,'save_record_button')
+    assert not hasattr(window,'history_button')
     assert TEMPLATE_VERSION=='p5-factual-2'
     window.close()
 

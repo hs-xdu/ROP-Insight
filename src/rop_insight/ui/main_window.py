@@ -21,6 +21,9 @@ from rop_insight.services.export_controller import ExportController
 from rop_insight.services.report_builder import build_report
 from rop_insight.services.report_exporter import export_report_bundle
 from rop_insight.ui.report_dialog import ReportDialog
+from rop_insight.ui.case_selector import CaseSelector
+from rop_insight.services.local_records import record_job
+from copy import deepcopy
 
 
 class LoadState(Enum):
@@ -40,6 +43,13 @@ class MainWindow(QMainWindow):
         self.exporter = ExportController(self)
         self.report_exporter = ExportController(self,job=export_report_bundle)
         self.report_dialog = None
+        self.library_root = None
+        self.current_case = None
+        self.case_dialog = None
+        self.run_cases = {}
+        self.records_worker = ExportController(self,job=record_job)
+        self.records_worker.changed.connect(self._update_analysis)
+        self.records_worker.finished.connect(self._record_saved)
         self._closing = False
         self._display_run_id = None
         self._displayed_masks = {}
@@ -96,6 +106,17 @@ class MainWindow(QMainWindow):
         side.addWidget(self.cancel_analysis_button)
         side.addWidget(self.export_button)
         side.addWidget(self.report_button)
+        self.case_button = QPushButton("病例与资料库")
+        self.case_button.clicked.connect(self.choose_case)
+        side.addWidget(self.case_button)
+        self.case_label = QLabel("临时分析 · 未选择病例")
+        self.case_label.setTextFormat(Qt.TextFormat.PlainText)
+        self.case_label.setWordWrap(True)
+        self.case_label.setSizePolicy(QSizePolicy.Policy.Ignored,QSizePolicy.Policy.Preferred)
+        side.addWidget(self.case_label)
+        self.save_record_button = QPushButton("保存分析记录")
+        self.save_record_button.clicked.connect(self.save_record)
+        side.addWidget(self.save_record_button)
         side.addWidget(self.analysis_label)
         self.analyze_button.clicked.connect(self.start_analysis)
         self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
@@ -244,10 +265,12 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("未加载 · 请选择一张眼底图像")
 
     def start_analysis(self):
-        if self._closing:
+        if self._closing or self._records_busy():
             return
         try:
-            self.analysis.start()
+            if self.analysis.start():
+                self.run_cases = {self.analysis.current_run.run_id:(self.library_root,deepcopy(self.current_case))}
+                self._update_analysis()
         except ConfigError as exc:
             self.analysis_label.setText(f"分析配置错误：{exc}")
 
@@ -272,12 +295,12 @@ class MainWindow(QMainWindow):
         return self.report_dialog
 
     def export_report(self,report,parent):
-        if self.report_exporter.busy or self._closing:return False
+        if self.report_exporter.busy or self.records_worker.busy or self._closing:return False
         return self.report_exporter.start(report,parent)
 
     def _report_export_finished(self,path,error):
         self.statusBar().showMessage(error if error else f"PDF报告已导出 · {path}")
-        if self._closing and not self.analysis.busy and not self.exporter.busy:self.close()
+        if self._closing and not self.analysis.busy and not self.exporter.busy and not self._records_busy():self.close()
 
     def export_results(self, parent):
         if self.exporter.busy or self.analysis.busy or self._closing:
@@ -299,7 +322,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(error)
         else:
             self.statusBar().showMessage(f"已导出分析快照 · {path}")
-        if self._closing and not self.analysis.busy and not self.report_exporter.busy:
+        if self._closing and not self.analysis.busy and not self.report_exporter.busy and not self._records_busy():
             self.close()
 
     def choose_ridge(self):
@@ -322,8 +345,61 @@ class MainWindow(QMainWindow):
         self.ridge_button.setToolTip("用户提供的 Ridge Mask：" + str(path))
         return True
 
+    def _records_busy(self):
+        return self.records_worker.busy or (self.case_dialog is not None and self.case_dialog.worker.busy)
+
+    def choose_case(self):
+        if self.analysis.busy or self._records_busy() or self._closing:return None
+        if self.case_dialog is not None:self.case_dialog.close()
+        self.case_dialog=CaseSelector(self.library_root,self.current_case,self)
+        self.case_dialog.selected.connect(self.apply_case)
+        self.case_dialog.worker.changed.connect(self._update_analysis)
+        self.case_dialog.worker.finished.connect(lambda *_:self._analysis_idle())
+        self.case_dialog.show()
+        return self.case_dialog
+
+    def apply_case(self,root,case):
+        if self.analysis.busy or self.records_worker.busy or self._closing:return False
+        self.library_root=str(root) if root else None;self.current_case=deepcopy(case)
+        self._update_analysis()
+        return True
+
+    def _record_saved(self,result,error):
+        if error or not result['ok']:
+            self.error_label.setText('保存记录失败：'+(error or result['message']));self.error_label.show()
+        else:
+            report='含报告' if result['record']['report_path'] else '报告未生成，可预览后再次保存补充'
+            self.error_label.hide()
+            self.statusBar().showMessage('分析记录已保存（'+report+'） · '+result['root'])
+        self._analysis_idle()
+
+    def save_record(self):
+        run=self.analysis.current_run
+        if self._closing or self.analysis.busy or self.report_exporter.busy or self._records_busy() or run is None:return False
+        binding=self.run_cases.get(run.run_id)
+        if not binding or binding!=(self.library_root,self.current_case) or self.current_case is None:
+            self.error_label.setText('请先选择病例并重新开始分析；已有结果不能改挂到其他病例。');self.error_label.show();return False
+        try:snapshot=ExportSnapshot.capture(self.analysis.context,run)
+        except ValueError as error:self.error_label.setText(str(error));self.error_label.show();return False
+        report=None
+        if self.report_dialog is not None:
+            candidate=self.report_dialog.report
+            source=candidate.data['source']
+            if source['run']['run_id']==run.run_id and source['image']['image_id']==snapshot.context.image_id:report=candidate
+        job=dict(kind='save',root=self.library_root,case=deepcopy(self.current_case),snapshot=snapshot,report=report)
+        self.statusBar().showMessage('正在后台保存原图、分析结果及已有报告…')
+        return self.records_worker.start(job,None)
+
     def _update_analysis(self):
         run = self.analysis.current_run
+        busy=self._records_busy()
+        self.case_button.setEnabled(not self.analysis.busy and not busy and not self._closing)
+        self.case_label.setText(f"当前病例：{self.current_case['case_code']} · "+{'left':'左眼','right':'右眼','unspecified':'未指定'}[self.current_case['eye']] if self.current_case else "临时分析 · 未选择病例")
+        if self.current_case:self.case_label.setText(self.case_label.text()+' · '+(self.current_case['exam_date'] or '日期未填写'))
+        bound=self.run_cases.get(run.run_id) if run else None
+        if bound and bound!=(self.library_root,self.current_case) and bound[1]:
+            self.case_label.setText(self.case_label.text()+'\n当前结果属于：'+bound[1]['case_code']+'；请重新分析后保存。')
+        self.save_record_button.setEnabled(bool(run and run.finished_at and self.current_case and bound==(self.library_root,self.current_case)) and not self.analysis.busy and not self.report_exporter.busy and not busy and not self._closing)
         self.report_button.setEnabled(bool(run and run.finished_at and run.status!='running')
             and not self.analysis.busy and not self.report_exporter.busy and not self._closing)
         self.export_button.setEnabled(bool(run and run.finished_at and run.status != 'running')
@@ -345,7 +421,7 @@ class MainWindow(QMainWindow):
                 self.ridge_button.setToolTip("")
         self.analyze_button.setEnabled(
             self.analysis.context is not None and self.analysis.available
-            and not self.analysis.busy and not self._closing)
+            and not self.analysis.busy and not self._records_busy() and not self._closing)
         self.cancel_analysis_button.setEnabled(self.analysis.busy and not self.analysis.cancelling)
         if self._closing:
             text = "正在等待分析任务安全退出…"
@@ -395,7 +471,7 @@ class MainWindow(QMainWindow):
         self.view.update_layers()
 
     def closeEvent(self, event):
-        if self.analysis.busy or self.exporter.busy or self.report_exporter.busy:
+        if self.analysis.busy or self.exporter.busy or self.report_exporter.busy or self._records_busy():
             self._closing = True
             self.import_button.setEnabled(False)
             self.clear_button.setEnabled(False)
@@ -405,8 +481,9 @@ class MainWindow(QMainWindow):
             self.analysis.cancel()
             event.ignore()
         else:
+            if self.case_dialog is not None:self.case_dialog.close()
             event.accept()
 
     def _analysis_idle(self):
-        if self._closing and not self.exporter.busy and not self.report_exporter.busy:
+        if self._closing and not self.analysis.busy and not self.exporter.busy and not self.report_exporter.busy and not self._records_busy():
             self.close()

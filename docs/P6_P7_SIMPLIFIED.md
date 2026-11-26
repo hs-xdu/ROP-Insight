@@ -362,3 +362,5 @@ ROP_Insight_Data/
 额外索引字段仅用于run_id幂等、文件清单哈希及报告哈希，不引入第三张表、病例版本、后台自动保存、备份恢复或P8。完整结果以现有JSON为准。历史病例快照独立保存在记录管理清单，不修改P4/P5契约。
 
 本轮文件：services/local_records.py，ui/case_selector.py及main_window最小接入；新增存储及UI测试。验证病例创建/重复/重启、源删除、重复/多Run保存、报告补充、失败/损坏/越界、换图换病例、后台与安全关闭、既有回归。每段测试通过后提交Git，完成P6-B后停止。
+
+实施状态：P6-A与P6-B已完成工程实现和测试，见 [使用与验收](P6_SIMPLE_VALIDATION.md)。P7-A、P7-B未启动。

@@ -52,9 +52,15 @@ def _write(path,value):
 class LocalRecords:
     def __init__(self,root):
         self.root=Path(root).absolute()
-        self.root.mkdir(parents=True,exist_ok=True)
         path=_safe(self.root,'rop_insight.db')
+        self.root.mkdir(parents=True,exist_ok=True)
         if (self.root/'catalog.sqlite3').exists():raise ValueError('这是旧五表资料库，请选择新的精简版目录')
+        if not path.exists():
+            records=_safe(self.root,'records')
+            if records.exists() and any(records.iterdir()):raise ValueError('已有记录但数据库缺失，请保留目录并人工核对')
+            try:
+                with path.open('xb'):pass
+            except FileExistsError:pass
         with self._db(True) as db:
             version=db.execute('PRAGMA user_version').fetchone()[0]
             tables={r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -77,7 +83,7 @@ class LocalRecords:
     @contextmanager
     def _db(self,write=False):
         path=_safe(self.root,'rop_insight.db')
-        db=sqlite3.connect(path,isolation_level=None,timeout=5)
+        db=sqlite3.connect(path.as_uri()+'?mode=rw',uri=True,isolation_level=None,timeout=5)
         db.row_factory=sqlite3.Row
         try:
             db.execute('PRAGMA foreign_keys=ON');db.execute('PRAGMA synchronous=FULL')
@@ -115,6 +121,8 @@ class LocalRecords:
         manifest=folder/'record_manifest.json'
         if _hash(manifest)!=row['manifest_sha256']:raise ValueError('记录清单损坏')
         data=_json(manifest)
+        if type(data.get('schema_version')) is not int or data['schema_version']!=1:raise ValueError('记录清单版本不支持')
+        if row['status']!=data['identity']['source']['run']['status']:raise ValueError('记录分析状态不匹配')
         if data['identity']['run_id']!=record_id or data['identity']['case']['case_id']!=row['case_id']:raise ValueError('记录身份不匹配')
         for name,sha in data['files'].items():
             if _hash(_safe(folder,name))!=sha:raise ValueError('记录文件缺失或损坏：'+name)
@@ -128,6 +136,8 @@ class LocalRecords:
         if _hash(manifest)!=expected:raise ValueError('报告清单损坏')
         data=_json(manifest)
         if data['run_id']!=identity['run_id'] or data['image_id']!=identity['image_id']:raise ValueError('报告不属于此分析')
+        expected=hashlib.sha256(json.dumps(identity['source'],ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False).encode()).hexdigest()
+        if data['source_snapshot_sha256']!=expected or data['input_file_sha256']!=identity['source']['image']['file_sha256']:raise ValueError('报告来源摘要不一致')
         for name,info in data['artifacts'].items():
             if _hash(_safe(folder,name))!=info['sha256']:raise ValueError('报告文件损坏')
 
@@ -165,7 +175,7 @@ class LocalRecords:
                             dst.write(chunk)
                         dst.flush();os.fsync(dst.fileno())
                     document=ImageLoader().load(destination)
-                    if document.file_sha256!=snapshot.context.file_sha256 or pixel_hash(document.image)!=pixel_hash(snapshot.context.image):raise ValueError('源文件已变化，请重新导入')
+                    if document.file_sha256!=snapshot.context.file_sha256 or pixel_hash(document.image)!=pixel_hash(snapshot.context.image) or document.image.size()!=snapshot.context.image.size() or document.format!=snapshot.context.format:raise ValueError('源文件已变化，请重新导入')
                     manifest=dict(schema_version=1,identity=identity,original=original,files={p.name:_hash(p) for p in bundle.iterdir() if p.is_file()})
                     _write(bundle/'record_manifest.json',manifest)
                     os.rename(bundle,target)
@@ -176,7 +186,7 @@ class LocalRecords:
             manifest_path=target/'record_manifest.json'
             with self._db(True) as db:
                 db.execute('''INSERT OR IGNORE INTO analysis_records VALUES (?,?,?,?,NULL,?,?,?,NULL)''',
-                    (record_id,case['case_id'],f'records/{record_id}/'+manifest['original'],f'records/{record_id}/result.json',snapshot.run.status,snapshot.run.finished_at,_hash(manifest_path)))
+                    (record_id,case['case_id'],f'records/{record_id}/'+manifest['original'],f'records/{record_id}/result.json',snapshot.run.status,timestamp(),_hash(manifest_path)))
             self.verify_record(record_id)
             if report is not None and self.get_record(record_id)['report_path'] is None:
                 parent=_safe(self.root,f'records/{record_id}/report');parent.mkdir(exist_ok=True)
@@ -185,3 +195,18 @@ class LocalRecords:
                 relative=(folder/'report.pdf').relative_to(self.root).as_posix()
                 with self._db(True) as db:db.execute('UPDATE analysis_records SET report_path=?,report_sha256=? WHERE record_id=? AND report_path IS NULL',(relative,sha,record_id))
             return self.verify_record(record_id)
+
+
+def record_job(job,unused=None):
+    """One background entry point; return expected errors as user-readable status."""
+    try:
+        store=LocalRecords(job['root'])
+        if job['kind']=='cases':return dict(ok=True,kind='cases',root=str(store.root),cases=store.cases())
+        if job['kind']=='create':
+            case=store.create_case(job['code'],job['eye'],job['date'])
+            return dict(ok=True,kind='create',root=str(store.root),case=case,cases=store.cases())
+        row=store.save_record(job['case'],job['snapshot'],job.get('report'))
+        return dict(ok=True,kind='save',record=row,root=str(store.root))
+    except (OSError,sqlite3.Error,ValueError,KeyError) as error:
+        message=str(error) if isinstance(error,ValueError) else '文件或数据库读写失败，请检查权限、磁盘及源文件'
+        return dict(ok=False,kind=job['kind'],message=message)

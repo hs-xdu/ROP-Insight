@@ -101,3 +101,33 @@ def test_wrong_library_and_unsafe_paths(saved_input,tmp_path):
         with pytest.raises(ValueError):_safe(store.root,relative)
     with sqlite3.connect(store.root/'rop_insight.db') as db:db.execute('PRAGMA user_version=99')
     with pytest.raises(ValueError):LocalRecords(store.root)
+
+
+def test_report_failure_keeps_valid_analysis_and_allows_retry(saved_input,qapp,monkeypatch):
+    import rop_insight.services.local_records as module
+    store,case,snapshot=saved_input
+    with monkeypatch.context() as patch:
+        patch.setattr(module,'export_report_bundle',lambda *args:(_ for _ in ()).throw(PermissionError('report failure')))
+        with pytest.raises(PermissionError):store.save_record(case,snapshot,build_report(snapshot))
+    assert store.verify_record(snapshot.run.run_id)['report_path'] is None
+    assert store.save_record(case,snapshot,build_report(snapshot))['report_path']
+
+
+def test_equal_pixel_count_wrong_shape_does_not_save(saved_input):
+    from PyQt6.QtGui import QImage,QColor
+    store,case,snapshot=saved_input
+    image=QImage(32,12,QImage.Format.Format_RGB32);image.fill(QColor('#d36b36'))
+    context=replace(snapshot.context,image=image)
+    with pytest.raises(ValueError):store.save_record(case,ExportSnapshot.capture(context,snapshot.run))
+    assert store.get_record(snapshot.run.run_id) is None
+
+
+def test_missing_database_does_not_silently_rebuild_existing_records(saved_input):
+    store,case,snapshot=saved_input;store.save_record(case,snapshot)
+    database=store.root/'rop_insight.db';backup=store.root/'kept-database.db';database.rename(backup)
+    with pytest.raises(sqlite3.OperationalError):store.get_record(snapshot.run.run_id)
+    assert not database.exists()
+    with pytest.raises(ValueError):LocalRecords(store.root)
+    assert not database.exists()
+    backup.rename(database)
+    assert LocalRecords(store.root).verify_record(snapshot.run.run_id)
