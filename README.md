@@ -2,6 +2,8 @@
 
 P5 已实现：分析结束后点击“预览辅助分析报告”，查看简要/详细报告并“导出PDF报告”。输出PDF、精确JSON、文字及来源清单，使用与验证见 [P5说明](docs/P5.md)。P6匿名病例信息、P7历史分析记录与报告复核已实现，操作和验收见 [P6/P7说明](docs/P6_P7.md)。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
 
+P6-B 已完成原图及输入Ridge的托管服务。正式病例操作界面按计划留到P6-E；本轮可用 `.\.venv\Scripts\python.exe tests\manual_p6_b.py` 打开独立合成数据验收窗口，依次检查托管、移走源文件后重开、损坏阻断。简明步骤见 [P6-B说明](docs/P6_B.md)。
+
 完整研究平台入口：`.\run-platform.ps1`。导入原图和已有 Ridge Mask，开始分析，结束后可“导出分析结果”，生成独立目录中的 JSON、二值 Mask PNG 和原图坐标叠加图。
 
 启动、自检、配置与复现见 [运行手册](docs/RUNBOOK.md)；导出字段见 [P4-A](docs/P4_A.md)，系统自审与剩余限制见 [P4-B](docs/P4_B_VALIDATION.md)，论文材料见 [索引](docs/THESIS_MATERIALS.md)。当前为手动 Ridge 的研究原型，自动 Ridge 仍暂缓。
