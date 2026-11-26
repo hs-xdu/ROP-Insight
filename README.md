@@ -1,6 +1,6 @@
 # ROP-Insight
 
-当前已按用户要求恢复到P5完成状态；此前P6/P7实现已撤回，后续按精简需求重新评审。回退与备份说明见 [回退记录](docs/P5_ROLLBACK.md)。下文涉及P6/P7的规划仅为历史参考。
+以P5回退版本为基线实施新的 [P6/P7精简方案](docs/P6_P7_SIMPLIFIED.md)。旧复杂方案已停用，回退历史见 [记录](docs/P5_ROLLBACK.md)。
 
 P5 已实现：分析结束后点击“预览辅助分析报告”，查看简要/详细报告并“导出PDF报告”。输出PDF、精确JSON、文字及来源清单，使用与验证见 [P5说明](docs/P5.md)。P6简化病例信息（建议）、P7历史记录与复核（可选）仍为规划。范围见 [开发设计](docs/DESIGN_V2.md)，依赖和验收见 [阶段路线图](docs/IMPLEMENTATION_ROADMAP.md)。
 

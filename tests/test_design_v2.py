@@ -35,7 +35,7 @@ class DesignV2Tests(unittest.TestCase):
             self.assertIn(term, report)
         for term in ('匿名研究编号', '不强制录入姓名', '患者临床信息不进入分类模型', '左右眼', '检查日期', '备注'):
             self.assertIn(term, case)
-        for term in ('result.json', 'MySQL 或 SQLite', '不触发模型推理', '报告未生成'):
+        for term in ('result.json', 'SQLite', '不触发模型推理', '报告未生成'):
             self.assertIn(term, history)
         self.assertNotIn('指定的 10 项结构特征', self.text)
 

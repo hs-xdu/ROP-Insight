@@ -23,7 +23,7 @@ class ImplementationRoadmapTests(unittest.TestCase):
             r"^\| (P\d(?:-[A-Z])?) \| ([^\n|]+) \| (MVP|P\d(?:-[A-Z])?) \| [^|]+ \| [^|]+ \|$",
             self.text, re.MULTILINE,
         )
-        expected = ["P2-A", "P2-B", "P2-C", "P2-D", "P2-E", "P3-A", "P3-B", "P4-A", "P4-B", "P5", "P6", "P7"]
+        expected = ["P2-A", "P2-B", "P2-C", "P2-D", "P2-E", "P3-A", "P3-B", "P4-A", "P4-B", "P5", "P6-A", "P6-B", "P7-A", "P7-B"]
         self.assertEqual([stage for stage, _, _ in rows], expected)
         details = re.findall(r"^### (P\d(?:-[A-Z])?) ", self.text, re.MULTILINE)
         self.assertEqual(details, expected)
@@ -33,12 +33,10 @@ class ImplementationRoadmapTests(unittest.TestCase):
             self.assertEqual(version.strip(), {"P2": "V0.2", "P3": "V0.3", "P4": "V1.0"}.get(stage[:2], '增量（待定）'))
             seen.add(stage)
 
-    def test_incremental_phases_keep_priorities_and_actual_status(self):
-        for stage, priority in [('P5', '优先'), ('P6', '建议'), ('P7', '可选')]:
-            row = next(line for line in self.text.splitlines() if line.startswith('| '+stage+' |'))
-            self.assertIn(priority, row)
-            self.assertIn('工程实现及自审通过' if stage=='P5' else '已规划未实施', row)
-        self.assertIn('不依赖 P6', self.text)
+    def test_incremental_phases_keep_current_simplified_scope(self):
+        self.assertIn('P6_P7_SIMPLIFIED.md',self.text)
+        for stage in ('P6-A','P6-B','P7-A','P7-B'):
+            self.assertIn('| '+stage+' |',self.text)
 
 
 if __name__ == "__main__":

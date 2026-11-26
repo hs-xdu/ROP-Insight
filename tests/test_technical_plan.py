@@ -43,9 +43,9 @@ class TechnicalPlanTests(unittest.TestCase):
         history = self.plan.split('## 15.', 1)[1]
         for term in ('QTextDocument', 'QPdfWriter', '同一报告数据', '模板', '95%后验区间'):
             self.assertIn(term, reporting)
-        self.assertIn('患者临床信息不进入分类模型', cases)
+        self.assertIn('两表SQLite', cases)
         self.assertIn('schema_version=1', history)
-        self.assertIn('可重建的 JSON 索引', history)
+        self.assertIn('SQLite记录索引', history)
         self.assertIn('不重新推理', history)
 
 
