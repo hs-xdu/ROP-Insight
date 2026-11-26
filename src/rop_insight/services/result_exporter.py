@@ -61,10 +61,9 @@ def pixel_hash(image):
 class ExportSnapshot:
     context: object
     run: object
-    case_metadata: dict | None = None
 
     @classmethod
-    def capture(cls, context, run, case_metadata=None):
+    def capture(cls, context, run):
         if context is None or run is None or context.image_id != run.image_id:
             raise ExportError('没有与当前图像对应的分析结果')
         if run.status == 'running' or not run.finished_at or any(
@@ -72,13 +71,7 @@ class ExportSnapshot:
             raise ExportError('请等待分析结束后导出')
         if context.image.isNull():
             raise ExportError('原图快照无效')
-        case=None
-        if case_metadata is not None:
-            from rop_insight.models.case_metadata import CaseMetadata
-            case=case_metadata if isinstance(case_metadata,CaseMetadata) else CaseMetadata.from_dict(case_metadata)
-            case.assert_binding(context.image_id,context.file_sha256,pixel_hash(context.image))
-            case=case.to_dict()
-        return cls(replace(context,image=context.image.copy()), deepcopy(run), deepcopy(case))
+        return cls(replace(context,image=context.image.copy()), deepcopy(run))
 
 
 def _save_png(image, path):
@@ -91,7 +84,7 @@ def _save_png(image, path):
 
 def export_bundle(snapshot, parent):
     # Recapture so direct construction cannot bypass lifecycle validation.
-    snapshot = ExportSnapshot.capture(snapshot.context, snapshot.run, snapshot.case_metadata)
+    snapshot = ExportSnapshot.capture(snapshot.context, snapshot.run)
     context, run = snapshot.context, snapshot.run
     parent = Path(parent).resolve()
     if not parent.is_dir():
@@ -161,14 +154,6 @@ def export_bundle(snapshot, parent):
             modules=modules, artifacts=artifacts,visualization=visualization,
             privacy=dict(original_file_copied=False,local_paths_included=False,
                          visualization_contains_retinal_image=bool(visualization)))
-        if snapshot.case_metadata is not None:
-            from rop_insight.services.case_store import write_case_link
-            write_case_link(staging/'case_metadata.json',snapshot.case_metadata,run.run_id)
-            artifact(staging/'case_metadata.json','case_metadata')
-            data['case_metadata_file']='case_metadata.json'
-            data['case_revision_id']=snapshot.case_metadata['revision_id']
-            data['privacy']['case_notes_user_supplied']=True
-            data['privacy']['case_notes_may_contain_personal_data']=True
         target = staging / 'result.json'
         with target.open('x',encoding='utf-8') as stream:
             json.dump(data,stream,ensure_ascii=False,allow_nan=False,indent=2)

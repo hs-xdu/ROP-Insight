@@ -21,10 +21,6 @@ from rop_insight.services.export_controller import ExportController
 from rop_insight.services.report_builder import build_report
 from rop_insight.services.report_exporter import export_report_bundle
 from rop_insight.ui.report_dialog import ReportDialog
-from rop_insight.ui.case_dialog import CaseDialog
-from rop_insight.ui.history_dialog import HistoryDialog
-from rop_insight.models.case_metadata import new_case, EYES
-from rop_insight.services.result_exporter import pixel_hash
 
 
 class LoadState(Enum):
@@ -44,9 +40,6 @@ class MainWindow(QMainWindow):
         self.exporter = ExportController(self)
         self.report_exporter = ExportController(self,job=export_report_bundle)
         self.report_dialog = None
-        self.case_metadata = None
-        self.case_dialog = None
-        self.history_dialog = None
         self._closing = False
         self._display_run_id = None
         self._displayed_masks = {}
@@ -103,17 +96,6 @@ class MainWindow(QMainWindow):
         side.addWidget(self.cancel_analysis_button)
         side.addWidget(self.export_button)
         side.addWidget(self.report_button)
-        self.case_button = QPushButton("匿名病例信息")
-        self.case_button.clicked.connect(self.edit_case)
-        side.addWidget(self.case_button)
-        self.case_label = QLabel("未关联病例")
-        self.case_label.setWordWrap(True)
-        self.case_label.setTextFormat(Qt.TextFormat.PlainText)
-        self.case_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        side.addWidget(self.case_label)
-        self.history_button = QPushButton("历史分析记录")
-        self.history_button.clicked.connect(self.open_history)
-        side.addWidget(self.history_button)
         side.addWidget(self.analysis_label)
         self.analyze_button.clicked.connect(self.start_analysis)
         self.cancel_analysis_button.clicked.connect(self.analysis.cancel)
@@ -278,7 +260,7 @@ class MainWindow(QMainWindow):
         if self.analysis.busy or self.report_exporter.busy or self._closing:
             return None
         try:
-            report=build_report(ExportSnapshot.capture(self.analysis.context,self.analysis.current_run,self._current_case()))
+            report=build_report(ExportSnapshot.capture(self.analysis.context,self.analysis.current_run))
         except (ExportError,ValueError) as exc:
             self.error_label.setText(f"报告生成失败：{exc}");self.error_label.show()
             return None
@@ -295,14 +277,14 @@ class MainWindow(QMainWindow):
 
     def _report_export_finished(self,path,error):
         self.statusBar().showMessage(error if error else f"PDF报告已导出 · {path}")
-        if self._closing and not self.analysis.busy and not self.exporter.busy and not self._history_busy():self.close()
+        if self._closing and not self.analysis.busy and not self.exporter.busy:self.close()
 
     def export_results(self, parent):
         if self.exporter.busy or self.analysis.busy or self._closing:
             return False
         try:
-            snapshot = ExportSnapshot.capture(self.analysis.context,self.analysis.current_run,self._current_case())
-        except (ExportError, ValueError) as exc:
+            snapshot = ExportSnapshot.capture(self.analysis.context,self.analysis.current_run)
+        except ExportError as exc:
             self.error_label.setText(str(exc))
             self.error_label.show()
             return False
@@ -317,7 +299,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(error)
         else:
             self.statusBar().showMessage(f"已导出分析快照 · {path}")
-        if self._closing and not self.analysis.busy and not self.report_exporter.busy and not self._history_busy():
+        if self._closing and not self.analysis.busy and not self.report_exporter.busy:
             self.close()
 
     def choose_ridge(self):
@@ -340,61 +322,7 @@ class MainWindow(QMainWindow):
         self.ridge_button.setToolTip("用户提供的 Ridge Mask：" + str(path))
         return True
 
-    def _current_case(self):
-        context = self.analysis.context
-        if context is None:
-            if self.case_dialog is not None:self.case_dialog.reject()
-            self.case_metadata = None
-            return None
-        if self.case_metadata is None or self.case_metadata.image_id != context.image_id:
-            if self.case_dialog is not None:
-                self.case_dialog.reject()
-            self.case_metadata = new_case(context, pixel_hash(context.image))
-        return self.case_metadata
-
-    def edit_case(self):
-        if self._closing or self.analysis.context is None or self.analysis.busy or self.report_exporter.busy:
-            return None
-        if self.case_dialog is not None:
-            self.case_dialog.reject()
-        run = self.analysis.current_run
-        self.case_dialog = CaseDialog(self._current_case(), run.run_id if run else None, self)
-        self.case_dialog.saved.connect(self._case_saved)
-        self.case_dialog.show()
-        return self.case_dialog
-
-    def _case_saved(self, metadata, path):
-        context = self.analysis.context
-        if context is None or self._closing:
-            return
-        try:
-            metadata.assert_binding(context.image_id, context.file_sha256, pixel_hash(context.image))
-        except ValueError:
-            return
-        self.case_metadata = metadata
-        if self.report_dialog is not None:
-            self.report_dialog.close()
-        self._update_analysis()
-        self.statusBar().showMessage(f"病例资料已保存 · {path}；再次预览将生成新报告，已有报告保持原样。")
-
-    def open_history(self):
-        if self._closing:
-            return None
-        if self.history_dialog is None:
-            self.history_dialog = HistoryDialog(self)
-            self.history_dialog.idle.connect(self._analysis_idle)
-        self.history_dialog.show()
-        self.history_dialog.raise_()
-        return self.history_dialog
-
-    def _history_busy(self):
-        return self.history_dialog is not None and self.history_dialog.busy
-
     def _update_analysis(self):
-        metadata = self._current_case()
-        self.case_button.setEnabled(metadata is not None and not self.analysis.busy and not self.report_exporter.busy and not self._closing)
-        self.case_label.setText(f"{metadata.case_id} · {EYES[metadata.eye]}\n{metadata.exam_date or '日期未填写'}" if metadata else "未关联病例")
-        self.history_button.setEnabled(not self._closing)
         run = self.analysis.current_run
         self.report_button.setEnabled(bool(run and run.finished_at and run.status!='running')
             and not self.analysis.busy and not self.report_exporter.busy and not self._closing)
@@ -467,7 +395,7 @@ class MainWindow(QMainWindow):
         self.view.update_layers()
 
     def closeEvent(self, event):
-        if self.analysis.busy or self.exporter.busy or self.report_exporter.busy or self._history_busy():
+        if self.analysis.busy or self.exporter.busy or self.report_exporter.busy:
             self._closing = True
             self.import_button.setEnabled(False)
             self.clear_button.setEnabled(False)
@@ -475,15 +403,10 @@ class MainWindow(QMainWindow):
             self.export_button.setEnabled(False)
             self._update_analysis()
             self.analysis.cancel()
-            if self.history_dialog is not None:
-                self.history_dialog.close()
             event.ignore()
         else:
-            if self.case_dialog is not None:self.case_dialog.reject()
-            if self.history_dialog is not None:self.history_dialog.close()
-            if self.report_dialog is not None:self.report_dialog.close()
             event.accept()
 
     def _analysis_idle(self):
-        if self._closing and not self.analysis.busy and not self.exporter.busy and not self.report_exporter.busy and not self._history_busy():
+        if self._closing and not self.exporter.busy and not self.report_exporter.busy:
             self.close()

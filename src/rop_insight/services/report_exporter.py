@@ -84,10 +84,6 @@ def export_report_bundle(report,parent):
         _write_text(staging/'report_summary.txt',render_text(report,False))
         _write_text(staging/'report_detail.txt',render_text(report))
         _write_text(staging/'report.html',render_html(report).replace('<head>','<head><style>'+STYLESHEET+'</style>',1))
-        if report.data.get('case_metadata') is not None:
-            from rop_insight.services.case_store import write_case_link
-            write_case_link(staging/'case_metadata.json',report.data['case_metadata'],
-                report.data['source']['run']['run_id'],report.data['report_id'])
         pages=write_pdf(report,staging/'report.pdf')
         if json.loads((staging/'report.json').read_text(encoding='utf-8'))!=report.data:
             raise ValueError('报告JSON读回不一致')
@@ -98,7 +94,6 @@ def export_report_bundle(report,parent):
             source_snapshot_sha256=data['source_snapshot_sha256'],run_id=data['source']['run']['run_id'],
             image_id=data['source']['image']['image_id'],input_file_sha256=data['source']['image']['file_sha256'],
             pdf_pages=pages,artifacts=artifacts)
-        if data.get('case_metadata') is not None:manifest['case_revision_id']=data['case_metadata']['revision_id']
         _write_text(staging/'report_manifest.json',json.dumps(manifest,ensure_ascii=False,allow_nan=False,indent=2))
         if destination.exists():raise FileExistsError('报告目录已存在，未覆盖')
         os.rename(staging,destination)

@@ -37,7 +37,7 @@ class ImplementationRoadmapTests(unittest.TestCase):
         for stage, priority in [('P5', '优先'), ('P6', '建议'), ('P7', '可选')]:
             row = next(line for line in self.text.splitlines() if line.startswith('| '+stage+' |'))
             self.assertIn(priority, row)
-            self.assertIn('工程实现及自审通过', row)
+            self.assertIn('工程实现及自审通过' if stage=='P5' else '已规划未实施', row)
         self.assertIn('不依赖 P6', self.text)
 
 
