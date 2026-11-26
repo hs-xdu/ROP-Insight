@@ -1,7 +1,7 @@
 """GUI-thread controller with one active worker and stale-result filtering."""
 
 from copy import deepcopy
-from importlib.metadata import PackageNotFoundError, version
+from rop_insight import __version__
 from threading import Event
 from uuid import uuid4
 
@@ -68,10 +68,7 @@ class AnalysisController(QObject):
         modules = ordered_modules(config)
         from dataclasses import replace
         context = replace(self.context, image=self.context.image.copy())
-        try:
-            software_version = version("rop-insight")
-        except PackageNotFoundError:
-            software_version = "unknown"
+        software_version = __version__
         self.current_run = AnalysisRun(str(uuid4()), context.image_id, deepcopy(config), {
             m.module_id: ModuleResult(m.module_id, model_version=m.model_version) for m in modules
         }, software_version=software_version)

@@ -2,7 +2,7 @@
 
 ## 1. 状态与目标
 
-状态：代码已实现，用户已确认验收完成；详见 [P2-A 验收记录](P2_A_VALIDATION.md)。依据 [实施路线图](IMPLEMENTATION_ROADMAP.md)、[技术方案](TECHNICAL_PLAN.md) 与 [第二版设计](DESIGN_V2.md)，本任务只搭建可复用的结果契约、配置及后台调度基础，不代表 P2 或 V0.2 已完成。
+状态：代码已实现，用户已确认验收完成；详见 [P2-A 验收记录](archive/P2_A_VALIDATION.md)。依据 [实施路线图](IMPLEMENTATION_ROADMAP.md)、[技术方案](TECHNICAL_PLAN.md) 与 [第二版设计](DESIGN_V2.md)，本任务只搭建可复用的结果契约、配置及后台调度基础，不代表 P2 或 V0.2 已完成。
 
 用户已同意实施本计划；以下为实施范围与验收基准，模型权重不是本阶段前置条件。
 
@@ -63,7 +63,7 @@
 | tests/test_analysis_config.py | 配置与依赖异常用例 |
 | tests/test_analysis_controller.py | 模块执行、状态、取消及生命周期测试 |
 | tests/test_window.py | 新入口、旧结果隔离、关闭行为及既有回归 |
-| README.md、docs/VALIDATION.md | 配置方式、验证证据及未实现边界 |
+| README.md、docs/archive/MVP_VALIDATION.md | 配置方式、验证证据及未实现边界 |
 
 仅按实际需要增加包初始化文件；保留原 `ImageDocument` 的对外行为，使用组合生成分析上下文。当前 PyQt6 和 Python 环境保持不变；不安装推理与科学计算依赖。临时配置和日志使用独立本地目录，不混入源码和普通 Git 提交。
 

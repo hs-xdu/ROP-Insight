@@ -7,3 +7,17 @@ build/
 dist/
 .runtime/
 configs/*.local.json
+
+# Local research data and private archives
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.bundle
+*.pt
+*.pth
+*.onnx
+*.pkl
+**/records/

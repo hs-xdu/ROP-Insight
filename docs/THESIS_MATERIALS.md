@@ -34,3 +34,5 @@ flowchart LR
 ![合成界面示例，无模型推理结果](assets/platform_demo.png)
 
 论文案例应保留输入哈希、模型/源码哈希、设备、软件commit/dirty、参考来源、比较容差、实际差异、样本范围和未完成项。不能将单次资源观察或工程对照扩大解释为临床有效性。
+
+当前论文软件版本可引用v0.2.0研究预发布标签，功能更新见 [发布说明](releases/v0.2.0.md)。病例保存和历史恢复证据见 [P6](P6_SIMPLE_VALIDATION.md)、[P7](P7_SIMPLE_VALIDATION.md)。早期阶段记录在 [历史档案](archive/README.md)。

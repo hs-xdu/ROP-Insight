@@ -5,7 +5,7 @@ import hashlib
 import json
 import math
 from uuid import uuid4
-from importlib.metadata import PackageNotFoundError, version
+from rop_insight import __version__
 from PyQt6.QtCore import PYQT_VERSION_STR, QT_VERSION_STR
 
 from rop_insight.models.analysis_result import timestamp
@@ -158,8 +158,7 @@ def report_from_result(result, *, report_id=None, generated_at=None):
     if run['status']!='success':limitations.append('本次分析'+STATES.get(run['status'],run['status'])+'，报告包含未完成模块，不能视为完整分析。')
     if any(f['status']!='available' for f in features):limitations.append('存在不可用特征；未提供的值不解释为0、正常或中等。')
     revision,dirty=code_identity()
-    try:software_version=version('rop-insight')
-    except PackageNotFoundError:software_version='unknown'
+    software_version=__version__
     data=dict(report_schema_version=1,template_version=TEMPLATE_VERSION,report_id=report_id or str(uuid4()),
         generator=dict(software_version=software_version,code_revision=revision,code_dirty=dirty,
                        pyqt=PYQT_VERSION_STR,qt=QT_VERSION_STR),

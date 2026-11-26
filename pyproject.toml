@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rop-insight"
-version = "0.1.0"
-description = "Local fundus image viewer"
+version = "0.2.0"
+description = "Local ROP fundus image analysis research workbench"
 requires-python = ">=3.12"
 dependencies = ["PyQt6==6.10.2"]
 
