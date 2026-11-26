@@ -15,7 +15,7 @@ from rop_insight.inference.svm_backend import FEATURES
 from rop_insight.services.build_info import code_identity
 from rop_insight.services.feature_descriptions import describe_features
 
-TEMPLATE_VERSION = 'p5-factual-2'
+TEMPLATE_VERSION = 'p5-factual-3'
 METRIC_NAMES = {'fractal_dimension':'分形维数 FD','vessel_area_density_fov':'血管密度 VD',
     'sliding_window_max_density_gradient':'最大局部密度变化','T3':'血管迂曲度 T3','B3':'血管分支 B3',
     'ridge_area_ratio_fov':'Ridge面积比例','ridge_solidity':'Ridge实心度',
@@ -44,7 +44,7 @@ def _clean(value):
 
 def snapshot_result(snapshot):
     """Same portable fields as P4 JSON, without writing PNG or reading sources."""
-    snapshot=ExportSnapshot.capture(snapshot.context,snapshot.run)
+    snapshot=ExportSnapshot.capture(snapshot.context,snapshot.run,snapshot.case_metadata)
     context,run=snapshot.context,snapshot.run
     configs={cfg.module_id:cfg for cfg in run.config.modules}
     modules={}
@@ -72,10 +72,10 @@ def snapshot_result(snapshot):
 
 
 def build_report(snapshot):
-    return report_from_result(snapshot_result(snapshot))
+    return report_from_result(snapshot_result(snapshot),case_metadata=snapshot.case_metadata)
 
 
-def report_from_result(result, *, report_id=None, generated_at=None):
+def report_from_result(result, *, report_id=None, generated_at=None, case_metadata=None):
     """Accept P4 schema 1 as well as live snapshots; do not open linked files."""
     if result.get('schema_version')!=1:raise ValueError('不支持的分析结果版本')
     image,run,modules=result.get('image',{}),result.get('run',{}),result.get('modules',{})
@@ -89,6 +89,11 @@ def report_from_result(result, *, report_id=None, generated_at=None):
         run={key:run.get(key) for key in RUN_FIELDS},modules={name:{key:value for key,value in item.items()
             if key in MODULE_FIELDS} for name,item in modules.items()})
     source=portable(_clean(deepcopy(source)))
+    case=None
+    if case_metadata is not None:
+        from rop_insight.models.case_metadata import CaseMetadata
+        case=CaseMetadata.from_dict(case_metadata)
+        case.assert_binding(source['image']['image_id'],source['image']['file_sha256'],source['image']['rgb_pixel_sha256'])
     canonical=json.dumps(source,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False)
     modules=source['modules']
 
@@ -166,4 +171,5 @@ def report_from_result(result, *, report_id=None, generated_at=None):
         generated_at=generated_at or timestamp(),source_snapshot_sha256=hashlib.sha256(canonical.encode('utf-8')).hexdigest(),
         source=source,a6=a6,structures=structures,features=features,score=scoring,svm=svm_result,limitations=limitations,
         feature_descriptions=describe_features(features))
+    if case is not None:data['case_metadata']=case.to_dict()
     return ReportDocument(json.dumps(data,ensure_ascii=False,allow_nan=False,sort_keys=True))

@@ -8,29 +8,33 @@ from rop_insight.services.result_exporter import export_bundle
 class ExportWorker(QObject):
     done = pyqtSignal(object, str)
 
-    def __init__(self,snapshot,parent_dir,job=None):
+    def __init__(self,snapshot,parent_dir,job=None,error_message=None):
         super().__init__()
         self.snapshot,self.parent_dir=snapshot,parent_dir
         self.job=job
+        self.error_message=error_message
 
     def run(self):
         try:
             result=(self.job or export_bundle)(self.snapshot,self.parent_dir)
             self.done.emit(result,'')
-        except Exception:
-            logging.getLogger('rop_insight.analysis').exception('Result export failed')
-            self.done.emit(None,'导出失败，请检查目录权限、磁盘空间及本地日志；本次未发布结果目录。')
+        except Exception as exc:
+            logging.getLogger('rop_insight.analysis').exception('Background task failed')
+            message=self.error_message or '导出失败，请检查目录权限、磁盘空间及本地日志；本次未发布结果目录。'
+            if self.error_message and isinstance(exc,ValueError):message+='：'+str(exc)
+            self.done.emit(None,message)
 
 
 class ExportController(QObject):
     changed=pyqtSignal()
     finished=pyqtSignal(object,str)
 
-    def __init__(self,parent=None,job=None):
+    def __init__(self,parent=None,job=None,error_message=None):
         super().__init__(parent)
         self._thread=self._worker=None
         self._outcome=(None,'')
         self.job=job
+        self.error_message=error_message
 
     @property
     def busy(self):
@@ -40,7 +44,7 @@ class ExportController(QObject):
         if self.busy:
             return False
         thread=QThread(self)
-        worker=ExportWorker(snapshot,parent_dir,self.job)
+        worker=ExportWorker(snapshot,parent_dir,self.job,self.error_message)
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.done.connect(self._receive)

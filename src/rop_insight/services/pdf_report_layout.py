@@ -28,7 +28,8 @@ class ReportPageLayout:
             first_height=self.text_height(items[0],self.body,self.width) if items else 0
             self.ensure(min(self.height,42+first_height))
             self.section(title)
-            for text in items:self.paragraph(text)
+            for text in items:
+                self.paragraph(text,keep_together=not (title=='匿名病例信息' and text.startswith('备注（用户录入）：')))
 
     def lines(self,text,font,width):
         result=[]
@@ -49,10 +50,10 @@ class ReportPageLayout:
     def ensure(self,height):
         if self.y and self.y+height>self.height:self.pages.append([]);self.y=0.
 
-    def paragraph(self,text,font=None,color='#243544',space=5):
+    def paragraph(self,text,font=None,color='#243544',space=5,keep_together=True):
         lines=self.lines(text,font or self.body,self.width)
         total=sum(math.ceil(line.height()*1.2) for line in lines)
-        if total<=self.height:self.ensure(total)
+        if keep_together and total<=self.height:self.ensure(total)
         for line in lines:
             step=math.ceil(line.height()*1.2);self.ensure(step)
             self.pages[-1].append(('text',line,0.,self.y,color));self.y+=step

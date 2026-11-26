@@ -17,6 +17,16 @@ def report_sections(report, detailed=True):
         f"图像：{image['width']} × {image['height']} px；格式：{image.get('format') or '未提供'}",
         '运行状态：'+STATES.get(run['status'],run['status']), '分析完成时间（UTC）：'+str(run['finished_at']),
         '报告生成时间（UTC）：'+data['generated_at']])]
+    case=data.get('case_metadata')
+    if case:
+        from rop_insight.models.case_metadata import EYES
+        notes=case['notes'] or '未填写'
+        if not detailed and len(notes)>160:notes=notes[:160]+'…（完整备注见详细报告）'
+        sections.append(('匿名病例信息',[
+            '研究病例编号：'+case['case_id'],'眼别：'+EYES[case['eye']],
+            '检查日期：'+(case['exam_date'] or '未填写'),'备注（用户录入）：'+notes,
+            '病例资料版本：'+case['revision_id'],
+            '病例资料仅用于图像/运行/报告关联与展示，不进入模型计算。']))
     lines=['A6模型预测：'+a6['prediction']] if a6['status']=='available' else ['A6模型结果不可用：'+a6['reason']]
     if a6['status']=='available':
         lines.extend(f"{label}：{number(probability)}（{probability:.2%}）" for label,probability in zip(a6['classes'],a6['probabilities']))

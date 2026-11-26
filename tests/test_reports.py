@@ -230,7 +230,7 @@ def test_shared_feature_descriptions_are_limited_to_three_and_do_not_grade(repor
     before=deepcopy(report_source)
     report=report_from_result(report_source)
     description=report.data['feature_descriptions']
-    assert report.data['template_version']=='p5-factual-2'
+    assert report.data['template_version']=='p5-factual-3'
     assert [item['key'] for item in description['items']]==[
         'vessel_area_density_fov','fractal_dimension','sliding_window_max_density_gradient']
     assert description['grading_applied'] is False
